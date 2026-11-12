@@ -1,0 +1,17 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\caption{How closely each unlearning method matches its retraining target: worst case over all deletion settings (means over 5 repeats).}
+\label{tab:approximation}
+\begin{tabular}{lccccccccc}
+\hline
+Method (vs. target) & COMPAS AEOD gap & COMPAS acc. gap & COMPAS θ distance & Adult AEOD gap & Adult acc. gap & Adult θ distance & HSLS AEOD gap & HSLS acc. gap & HSLS θ distance \\
+\hline
+Fair Unlearning vs. Retraining (Fair) & 0.0013 & 0.0004 & 1.11e-02 & 0.0001 & 0.0000 & 4.86e-02 & 0.0001 & 0.0001 & 3.06e-04 \\
+Newton (BCE) vs. Retraining (BCE) & 0.0003 & 0.0002 & 9.72e-03 & 0.0000 & 0.0000 & 6.64e-03 & 0.0001 & 0.0001 & 2.41e-04 \\
+SISA (BCE) vs. Retraining (BCE) & 0.0404 & 0.0152 & -- & 0.0067 & 0.0015 & -- & 0.0147 & 0.0019 & -- \\
+PRU (BCE) vs. Retraining (BCE) & 0.1026 & 0.0479 & 2.50e+02 & 0.0358 & 0.0154 & 2.66e+01 & 0.1519 & 0.0254 & 1.41e+01 \\
+\hline
+\end{tabular}
+\\[2pt]\parbox{\textwidth}{\footnotesize Gaps are absolute differences from the retraining target; θ distance is the L2 distance between parameter vectors. Lower is better. SISA is an ensemble, so it has no single parameter vector.}
+\end{table*}

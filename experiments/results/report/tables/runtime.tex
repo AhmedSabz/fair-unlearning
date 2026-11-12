@@ -1,0 +1,18 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\caption{Runtime in seconds, retraining vs. Fair Unlearning (random deletion), ours vs. paper Table 2.}
+\label{tab:runtime}
+\begin{tabular}{lcccccc}
+\hline
+Method & COMPAS 5\% & COMPAS 20\% & Adult 5\% & Adult 20\% & HSLS 5\% & HSLS 20\% \\
+\hline
+Retraining (Fair) (ours) & 0.0212 $\pm$ 0.0071 & 0.0202 $\pm$ 0.0054 & 0.0850 $\pm$ 0.0043 & 0.0911 $\pm$ 0.0192 & 0.0354 $\pm$ 0.0031 & 0.0305 $\pm$ 0.0076 \\
+Retraining (Fair) (paper) & -- & -- & 36.796 $\pm$ 1.090 & -- & 14.963 $\pm$ 0.396 & 12.362 $\pm$ 0.795 \\
+Fair Unlearning (ours) & 0.0012 $\pm$ 0.0000 & 0.0013 $\pm$ 0.0001 & 0.0083 $\pm$ 0.0003 & 0.0075 $\pm$ 0.0006 & 0.0129 $\pm$ 0.0004 & 0.0111 $\pm$ 0.0008 \\
+Fair Unlearning (paper) & -- & -- & 8.800 $\pm$ 0.511 & -- & 6.014 $\pm$ 0.249 & 5.704 $\pm$ 0.015 \\
+Speedup (ours) & 17.8$\times$ & 16.1$\times$ & 10.3$\times$ & 12.1$\times$ & 2.7$\times$ & 2.7$\times$ \\
+\hline
+\end{tabular}
+\\[2pt]\parbox{\textwidth}{\footnotesize Ours: CPU, float64; the Newton step computes the Hessian on the remaining data at unlearning time (no precomputation). Paper: 32GB V100 GPU. Absolute times are not comparable across hardware; compare the speedup. -- = not reported or not legible in the published table.}
+\end{table*}

@@ -1,466 +1,256 @@
 # Efficient and Fair Machine Unlearning: Newton-Based Data Removal, Demographic Fairness, and Multi-Dataset Evaluation
 
-An implementation and experimental study of **Fair Machine Unlearning**, inspired by the paper *Fair Machine Unlearning: Data Removal while Mitigating Disparities* (AISTATS 2024).
+A reproduction of *Fair Machine Unlearning: Data Removal while Mitigating
+Disparities* (Oesterling, Ma, Calmon, Lakkaraju, AISTATS 2024)
+[[paper](https://proceedings.mlr.press/v238/oesterling24a.html),
+[arXiv](https://arxiv.org/abs/2307.14754),
+[official code](https://github.com/AI4LIFE-GROUP/fair-unlearning)],
+for SJSU CMPE 257 (Machine Learning), Fall 2026.
 
-This project investigates how machine learning models can remove the influence of selected training data while maintaining predictive performance and monitoring fairness across demographic groups.
+When someone asks for their data to be deleted, a model has to "unlearn" it.
+Retraining from scratch is exact but slow; one Newton step from the trained
+model is fast and nearly exact. The paper shows that the standard Newton
+method cannot unlearn from a model trained with a **fairness** penalty, because
+that penalty compares pairs of people across demographic groups, and proposes
+**Fair Unlearning**: a Newton update that accounts for those pairwise terms, with
+a provable (ε, δ) unlearning certificate and a bound on how much fairness can
+change.
 
-## Project Overview
+We reproduce the paper's full experimental setup on all three datasets
+(Adult, COMPAS, HSLS) and validate our implementation against the authors' code.
 
-Machine unlearning aims to remove the influence of specified training samples without retraining a model from scratch.
+## Results at a glance
 
-This project implements a Newton-based unlearning approach for fairness-aware logistic regression and compares its results against complete retraining on the remaining dataset.
+- **The paper's main claim reproduces.** Fair Unlearning tracks fair retraining
+  within 0.0013 AEOD and 0.0004 accuracy in every dataset and deletion
+  setting, and stays fairer than unlearning methods built for the plain
+  (BCE) loss: AEOD at 5% random deletion is 0.038 vs. 0.106 (Adult),
+  0.038 vs. 0.295 (HSLS) and 0.206 vs. 0.217 (COMPAS, where the gap is
+  small on this split).
+- **Speed:** 3–18× faster than retraining (paper: 2–20×).
+- **Accuracy** is within about 1.5 points of the paper on Adult and HSLS;
+  COMPAS is about 3 points lower, within the variation we measured across
+  train/test splits.
+- **Validation:** 45 / 45 checks against the official code pass on identical
+  inputs. We also found five differences in the official code (below); with
+  them fixed, its update steps reproduce ours, and ours land about 2–900×
+  closer to the retrained model.
+- **Split variance:** the paper repeats each experiment on one fixed
+  train/test split. Re-drawing the split per seed widens COMPAS error bars
+  from ±0.010 to ±0.087 AEOD, so split choice matters far more than which
+  rows are deleted.
+- **Certificate:** with the paper's noise (σ = 1), ε at δ = 1e-4 ranges from
+  0.4 (HSLS, 1% deleted) to a few hundred (Adult, 20% deleted).
 
-We evaluate:
+![AEOD when unlearning at random](experiments/results/report/figures/fig1_aeod_random.png)
 
-- Predictive performance (Accuracy)
-- Fairness (Average Equalized Odds Difference — AEOD)
-- Parameter distance between Newton unlearning and retraining
-- Runtime and computational efficiency
-- Effects of random and demographic-targeted data deletion
+Full tables, with the paper's numbers alongside ours:
+[accuracy (random)](experiments/results/report/tables/accuracy_random.md),
+[accuracy (minority)](experiments/results/report/tables/accuracy_minority.md),
+[accuracy (majority)](experiments/results/report/tables/accuracy_majority.md),
+[runtime](experiments/results/report/tables/runtime.md),
+[approximation quality](experiments/results/report/tables/approximation.md),
+[certificates](experiments/results/report/tables/certificate.md),
+[validation](experiments/results/validation/official_comparison.md).
 
-Experiments are conducted across three datasets: Adult Census Income, COMPAS Recidivism, and HSLS:09.
+## What is reproduced
 
-## Methodology
+| Paper | Ours | Script |
+|---|---|---|
+| Fig. 1, Fig. 3: AEOD for random, minority and majority deletion | `report/figures/fig1_aeod_random`, `fig3_aeod_subgroups` | `run_deletion_sweep.py` → `make_report.py` |
+| Fig. 2: accuracy and ε vs. noise σ | `report/figures/fig2_noise` | `run_noise_sweep.py` → `make_report.py` |
+| Figs. 5–7: demographic parity, equality of opportunity, subgroup accuracy | `report/figures/fig5–7_*` | `run_deletion_sweep.py` → `make_report.py` |
+| Tables 4–6: test accuracy | `report/tables/accuracy_*` | `make_report.py` |
+| Table 2: runtime | `report/tables/runtime` | `make_report.py` |
+| Fig. 4 (App. A.9): fairness–accuracy tradeoff over γ | Task 1 (separate script) | — |
+| Methods: Fair Unlearning, Retraining (Fair/BCE), Newton, SISA, PRU, Full Training (Fair/BCE) | all eight | `src/unlearning/` |
 
-### 1. Fair Logistic Regression Objective
+All figures and tables are under `experiments/results/report/`.
 
-The training objective combines binary cross-entropy, a fairness regularization term, and L2 regularization:
+## Method
 
-\[
-L(\theta,D)=L_{\mathrm{BCE}}+\gamma L_{\mathrm{fair}}+\frac{\lambda}{2}\|\theta\|^2
-\]
+**Fair objective** (paper Eq. 2–4). Logistic regression with an L2 penalty and
+the convex fairness penalty of Berk et al. (2017):
 
-The pairwise fairness penalty measures differences between protected groups, considering samples with matching ground-truth labels:
+$$
+\mathcal{L}(\theta, D) = \frac{1}{n}\sum_{i=1}^{n} \ell(\theta, x_i, y_i)
+  + \frac{\lambda}{2}\lVert\theta\rVert^2
+  + \gamma \Big( \frac{1}{n_a n_b} \sum_{i \in G_a} \sum_{j \in G_b}
+      \mathbb{1}[y_i = y_j]\,(\langle x_i, \theta\rangle - \langle x_j, \theta\rangle) \Big)^2
+$$
 
-\[
-L_{\mathrm{fair}}=(v^T\theta)^2
-\]
+The penalty compares every pair of people from different groups who share a
+true label, which targets Equalized Odds. Because each person appears in many
+pairs, the loss is not a sum of per-person terms, which is what breaks
+standard Newton unlearning.
 
-Where:
+**Fair Unlearning** (Eq. 7–8). After deleting rows R, take one Newton step from
+the trained model θ* toward the optimum on the remaining data D' = D \ R:
 
-- \(L_{\mathrm{BCE}}\): Binary cross-entropy loss.
-- \(L_{\mathrm{fair}}\): Pairwise fairness penalty.
-- \(\gamma\): Fairness regularization strength.
-- \(\lambda\): L2 regularization coefficient.
-- \(v\): Group-based fairness vector.
+$$
+\theta^- = \theta^* - H^{-1} \nabla \mathcal{L}(\theta^*, D'), \qquad
+H = \nabla^2 \mathcal{L}(\theta^*, D')
+$$
 
-### 2. Newton-Based Machine Unlearning
+We compute the gradient and Hessian of the full objective on D' exactly (with
+automatic differentiation), which handles the pairwise terms and equals the
+paper's Δ (Eq. 7). With γ = 0 this is the Newton method of Guo et al. (2020).
 
-After training the original model, selected training records are removed.
+**Noise and certificate** (Thm. 1, Lemma 2). Training and retraining minimize
+L + bᵀθ with b ~ N(0, σ²I), σ = 1, using the same b. If the unlearned model's
+gradient on D' is at most ε′, unlearning is (ε, δ)-indistinguishable from
+retraining with ε = √(2 ln(1.5/δ)) · ε′/σ. We compute ε′ with both of the
+paper's bounds (Theorem 1 and the data-dependent bound of App. A.2) and report
+the smaller, as the paper does.
 
-The gradient and Hessian of the objective are evaluated on the remaining dataset:
-
-\[
-g'=\nabla L(\theta_D^*,D')
-\]
-
-\[
-H'=\nabla^2 L(\theta_D^*,D')
-\]
-
-The Newton unlearning update is:
-
-\[
-\theta_{\mathrm{unlearned}}
-=
-\theta_D^*-(H'+\alpha I)^{-1}g'
-\]
-
-Here, \(\alpha\) is a small damping parameter used for numerical stability.
-
-The implementation uses `torch.linalg.solve()` rather than explicitly calculating the matrix inverse.
-
-### 3. Retraining Baseline
-
-For every deletion experiment, a separate model is trained from scratch using only the remaining training records.
-
-This retrained model serves as the reference for evaluating the Newton unlearning approximation.
-
-### 4. Evaluation Metrics
-
-| Metric | Description |
-|---|---|
-| Accuracy | Measures predictive correctness. |
-| AEOD | Measures average differences in group-specific true-positive and false-positive rates. |
-| Parameter Distance | L2 distance between Newton-unlearned and retrained model parameters. |
-| Runtime | Compares Newton unlearning and full retraining execution time. |
-
-Average Equalized Odds Difference is calculated as:
-
-\[
-AEOD=\frac{1}{2}\left(
-|TPR_a-TPR_b|+|FPR_a-FPR_b|
-\right)
-\]
-
-Lower AEOD indicates smaller differences in error rates between the evaluated demographic groups.
+**Metrics.** Absolute Equalized Odds Difference (AEOD, Eq. 1) =
+½(|TPR_a − TPR_b| + |FPR_a − FPR_b|), plus absolute demographic parity,
+equality of opportunity and subgroup accuracy differences, and test accuracy.
 
 ## Datasets
 
-### Adult Census Income
+Preprocessing reimplements the official code and reproduces the authors'
+cleaned tables value for value (see [`data/README.md`](data/README.md)).
 
-- **Task:** Predict whether annual income exceeds $50,000.
-- **Protected attribute:** Sex (female and male).
-- **Features:** Demographic, educational, and employment-related variables.
-- **Training records:** 30,162.
-- **Test records:** 15,060.
-- **Model input dimensions:** 102.
+| Dataset | Rows | Inputs (incl. intercept) | Sensitive attribute (race) | Target | γ | λ |
+|---|---|---|---|---|---|---|
+| Adult | 46,447 | 21 | White / Black | income > $50K | 1 | 1e-4 |
+| COMPAS | 5,278 | 7 | Caucasian / African-American | is_recid | 10 | 1e-4 |
+| HSLS | 14,509 | 59 | White, Asian / other | 9th-grade math grade (binary) | 10 | 1e-2 |
 
-### COMPAS Recidivism
+Random 80/20 train/test split; every row scaled to norm ≤ 1 (Theorem 1's
+assumption); intercept column appended. Deletions are 1, 5, 10, 15, 20% of the
+training set (random or majority group) and 1, 5, 10% (minority group), with
+5 repeats, as in the paper.
 
-- **Task:** Predict two-year recidivism.
-- **Protected attribute:** Race (Caucasian and African-American).
-- **Features:** Age, prior offenses, juvenile offense counts, sex, and charge degree.
-- **Training records:** 4,222.
-- **Test records:** 1,056.
-- **Model input dimensions:** 9.
+## Setup
 
-### HSLS:09 (High School Longitudinal Study of 2009)
+With conda (recommended):
 
-- **Source:** National Center for Education Statistics (NCES).
-- **Task:** Predict whether a student had ever attended college by February 2016.
-- **Protected attribute:** Sex (male and female).
-- **Features:** High-school GPA and family income.
-- **Usable records:** 17,319.
-- **Training records:** 13,855.
-- **Test records:** 3,464.
-- **Model input dimensions:** 16.
+```bash
+conda env create -f environment.yml
+conda activate fair-unlearning
+```
 
-HSLS preprocessing excludes records with missing sex or unknown outcomes, as well as imputed target outcomes in the primary experiment. Numerical and categorical preprocessing is fitted on the training split to avoid data leakage.
+Or with pip: `pip install -r requirements.txt`.
 
-The HSLS experiment is an unweighted predictive evaluation, not a survey-weighted population estimate.
+All data files are in the repository; nothing needs to be downloaded.
 
-## Experiments
+## Running
 
-Two deletion strategies are evaluated across all three datasets.
+From the repository root:
 
-### Random Data Deletion
+```bash
+python -m pytest                                    # tests, ~5 s
+python -m experiments.run_deletion_sweep            # Figs. 1, 3, 5–7, Tables 2, 4–6 data (~30–60 min)
+python -m experiments.run_deletion_sweep --vary-split   # same, new split per seed
+python -m experiments.run_noise_sweep               # Fig. 2 data (~10–20 min)
+python -m experiments.make_report                   # tables and figures, ~10 s
+python -m validation.compare_official               # check against the official code
+```
 
-Randomly remove 1%, 5%, and 10% of the training records.
+Useful options: `--datasets compas adult`, `--quick` (1 seed), `--plot-only`,
+`--sigma 0` (no noise), `--gamma` / `--lambda-reg` (override the paper's values).
 
-| Dataset | Deletion Rates | Status |
-|---|---|---|
-| Adult | 1%, 5%, 10% | Completed |
-| COMPAS | 1%, 5%, 10% | Completed |
-| HSLS:09 | 1%, 5%, 10% | Completed |
+Outputs:
 
-### Demographic-Targeted Data Deletion
+```
+experiments/results/
+├── deletion_sweep_raw_<dataset>.csv     every seed and method
+├── deletion_sweep_summary.csv           mean ± std over 5 repeats
+├── plots/deletion_sweep/                one plot per dataset, deletion type, metric
+├── vary_split/                          same, with a new split per seed
+├── noise_sweep/                         Fig. 2 data and plots
+├── report/{tables,figures}/             paper-style tables (Markdown, LaTeX) and figures (PDF, PNG)
+└── validation/official_comparison.md    validation report
+```
 
-Remove selected percentages of records within each protected group.
+## Repository structure
 
-| Dataset | Protected Groups | Deletion Rates | Status |
-|---|---|---|---|
-| Adult | Female / Male | 1%, 5%, 10% | Completed |
-| COMPAS | Caucasian / African-American | 1%, 5%, 10% | Completed |
-| HSLS:09 | Male / Female | 1%, 5%, 10% | Completed |
-
-Deletion percentages are calculated within each selected demographic group, not across the entire training dataset.
-
-In total, the project evaluates 27 deletion scenarios: nine random-deletion scenarios and eighteen demographic-targeted scenarios.
-
-## Experimental Results
-
-The following results summarize the recorded experiments. Accuracy, AEOD, and parameter distance are means across deletion scenarios. Runtime and speedup are reported using the recorded median measurements.
-
-### Adult Census Income
-
-Original baseline:
-
-- Accuracy: 84.46%
-- AEOD: 0.0602
-
-| Strategy | Newton Accuracy | Retrained Accuracy | Newton AEOD | Retrained AEOD | Parameter Distance |
-|---|---:|---:|---:|---:|---:|
-| Random deletion | 84.42% | 84.42% | 0.0600 | 0.0601 | 0.125457 |
-| Group deletion | 84.44% | 84.43% | 0.0593 | 0.0593 | 0.105667 |
-
-### COMPAS Recidivism
-
-Original baseline:
-
-- Accuracy: 65.25%
-- AEOD: 0.1469
-
-| Strategy | Newton Accuracy | Retrained Accuracy | Newton AEOD | Retrained AEOD | Parameter Distance |
-|---|---:|---:|---:|---:|---:|
-| Random deletion | 65.44% | 65.44% | 0.1413 | 0.1413 | 0.000134 |
-| Group deletion | 65.34% | 65.34% | 0.1461 | 0.1461 | 0.000231 |
-
-### HSLS:09
-
-Original baseline:
-
-- Accuracy: 80.34%
-- AEOD: 0.0389
-
-| Strategy | Newton Accuracy | Retrained Accuracy | Newton AEOD | Retrained AEOD | Parameter Distance |
-|---|---:|---:|---:|---:|---:|
-| Random deletion | 80.34% | 80.34% | 0.0389 | 0.0389 | 0.014933 |
-| Group deletion | 80.33% | 80.33% | 0.0391 | 0.0391 | 0.018120 |
-
-### Runtime Comparison
-
-| Dataset | Strategy | Newton Median (s) | Retraining Median (s) | Observed Speedup |
-|---|---|---:|---:|---:|
-| Adult | Random | 0.6235 | 6.5463 | 10.50× |
-| Adult | Group | 0.6813 | 5.9842 | 8.40× |
-| COMPAS | Random | 0.0225 | 0.0731 | 4.17× |
-| COMPAS | Group | 0.0316 | 0.1472 | 4.96× |
-| HSLS | Random | 0.0812 | 1.0815 | 16.11× |
-| HSLS | Group | 0.0634 | 0.7314 | 12.21× |
-
-### Preliminary Observations
-
-1. Newton unlearning closely approximates full retraining in predictive accuracy and fairness metrics across the evaluated datasets.
-2. Newton unlearning achieved observed speedups ranging from approximately 4.17× to 16.11× over retraining.
-3. Parameter distance varies across datasets and generally increases with larger deletion rates in the individual experiments.
-4. Fairness outcomes depend on the dataset, demographic group, and deletion percentage.
-5. Demographic-targeted deletion does not consistently improve fairness.
-6. Newton and retrained models frequently produce identical test metrics to the reported precision, despite having different parameter values.
-
-These results demonstrate empirical similarity to retraining under the evaluated conditions. They do not establish a formal guarantee of certified data removal.
-
-## Visualizations
-
-Ten experimental plots have been generated.
-
-### Random Deletion Experiments
-
-- `accuracy_vs_deletion.png`
-- `aeod_vs_deletion.png`
-- `runtime_comparison.png`
-- `parameter_distance.png`
-
-### Demographic-Targeted Deletion Experiments
-
-**Adult:**
-- `adult_group_accuracy.png`
-- `adult_group_aeod.png`
-
-**COMPAS:**
-- `compas_group_accuracy.png`
-- `compas_group_aeod.png`
-
-**HSLS:09:**
-- `hsls_group_accuracy.png`
-- `hsls_group_aeod.png`
-
-All visualizations are stored in:
-
-`experiments/results/plots/`
-
-## Repository Structure
-
-```text
-fair-unlearning/
-│
+```
+src/
 ├── data/
-│   └── raw/
-│       ├── adult/
-│       ├── compas/
-│       └── hsls/
-│
-├── src/
-│   ├── data/
-│   │   ├── adult.py
-│   │   ├── compas.py
-│   │   └── hsls.py
-│   │
-│   ├── objectives/
-│   │   ├── fair_loss.py
-│   │   ├── derivatives.py
-│   │   └── train.py
-│   │
-│   └── unlearning/
-│       └── newton.py
-│
-├── tests/
-│   ├── test_fair_loss.py
-│   ├── test_derivatives.py
-│   ├── test_unlearning.py
-│   ├── test_retraining_comparison.py
-│   ├── test_adult.py
-│   ├── test_adult_training.py
-│   ├── test_adult_unlearning.py
-│   ├── test_compas.py
-│   └── test_hsls_training.py
-│
-├── experiments/
-│   ├── run_adult_deletion_rates.py
-│   ├── run_adult_group_deletion.py
-│   ├── run_compas_deletion_rates.py
-│   ├── run_compas_group_deletion.py
-│   ├── run_hsls_deletion_rates.py
-│   ├── run_hsls_group_deletion.py
-│   ├── plot_results.py
-│   │
-│   └── results/
-│       ├── adult_deletion_rates.csv
-│       ├── adult_group_deletion.csv
-│       ├── compas_deletion_rates.csv
-│       ├── compas_group_deletion.csv
-│       ├── hsls_deletion_rates.csv
-│       ├── hsls_group_deletion.csv
-│       │
-│       └── plots/
-│           ├── accuracy_vs_deletion.png
-│           ├── aeod_vs_deletion.png
-│           ├── runtime_comparison.png
-│           ├── parameter_distance.png
-│           ├── adult_group_accuracy.png
-│           ├── adult_group_aeod.png
-│           ├── compas_group_accuracy.png
-│           ├── compas_group_aeod.png
-│           ├── hsls_group_accuracy.png
-│           └── hsls_group_aeod.png
-│
-├── README.md
-├── requirements.txt
-└── .gitignore
+│   ├── datasets.py        paper preprocessing for all three datasets
+│   └── adult.py, compas.py, hsls.py   load_adult(), load_compas(), load_hsls()
+├── objectives/
+│   ├── fair_loss.py       fair objective (+ optional noise term)
+│   ├── train.py           L-BFGS training
+│   └── derivatives.py     gradient and Hessian (autograd)
+├── unlearning/
+│   ├── newton.py          Fair Unlearning / Newton step
+│   ├── baselines.py       SISA and PRU
+│   └── certificate.py     (ε, δ) bounds
+└── evaluation/metrics.py  accuracy and fairness metrics
+experiments/
+├── run_deletion_sweep.py  main experiments (all methods, all deletion settings)
+├── run_noise_sweep.py     noise vs. certificate (Fig. 2)
+└── make_report.py         tables and figures
+validation/compare_official.py   comparison with the authors' code
+tests/test_reproduction.py       pytest suite (also run by GitHub Actions)
+data/                      raw data and data/README.md
 ```
 
-## Running the Experiments
+## Differences from the paper and its official code
 
-### Installation
+Our implementation follows the paper's equations. Comparing against the
+official code on identical inputs
+([report](experiments/results/validation/official_comparison.md)) found:
 
-Clone the repository:
+1. **Hessian L2 term.** The official update steps use n·λ; the Hessian of the
+   loss on the remaining data has (n − k)·λ.
+2. **Intercept counted twice** in the official Newton (BCE) Hessian weights.
+3. **PRU** builds its gradient from the first k training rows instead of the
+   deleted rows. We follow Izzo et al.'s algorithm.
+4. **Precision and convergence.** The official code sums the fairness term in
+   float32 and stops training after 20 L-BFGS steps without a line search,
+   which does not always reach the optimum. We use float64 and train to
+   convergence (gradient norm ≈ 1e-8).
+5. **Certificate.** The official script divides by σ²; Lemma 2 gives ε ∝ 1/σ.
+   The two agree at σ = 1 (all main results). With 1/σ, ε is lowest around
+   σ = 1–10 and rises again for larger noise, which dividing by σ² hides.
 
-```bash
-git clone https://github.com/AhmedSabz/fair-unlearning.git
-cd fair-unlearning
-```
+Other notes: the paper's 5 repeats re-draw only the deleted rows on one split;
+`--vary-split` also re-draws the split. Runtimes are on CPU (paper: V100 GPU),
+so only the speedups are comparable.
 
-Create and activate a virtual environment:
+## Limitations
 
-```bash
-python -m venv .venv
-```
+- Logistic regression only, as in the paper; the guarantees need a convex loss.
+- One train/test split per run in the paper's protocol; COMPAS in particular
+  varies a lot between splits (see `report/figures/split_variation`).
+- Fig. 4 (fairness–accuracy tradeoff over γ) is produced separately (Task 1).
+- HSLS uses the authors' preprocessed, k-NN-imputed table, not survey weights.
+- Large ε values at high deletion rates mean the certificate is weak there;
+  the paper's bound scales with the number of deleted rows.
 
-Windows:
+## Other scripts in `tests/`
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-Linux/macOS:
-
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-### Run Unit Tests
-
-```bash
-python -m tests.test_fair_loss
-python -m tests.test_derivatives
-python -m tests.test_unlearning
-python -m tests.test_retraining_comparison
-```
-
-### Run Adult Experiments
-
-```bash
-python -m tests.test_adult
-python -m tests.test_adult_training
-python -m experiments.run_adult_deletion_rates
-python -m experiments.run_adult_group_deletion
-```
-
-### Run COMPAS Experiments
-
-```bash
-python -m tests.test_compas
-python -m experiments.run_compas_deletion_rates
-python -m experiments.run_compas_group_deletion
-```
-
-### Run HSLS Experiments
-
-```bash
-python -m tests.test_hsls_training
-python -m experiments.run_hsls_deletion_rates
-python -m experiments.run_hsls_group_deletion
-```
-
-Download the datasets from their respective official sources and place them in the corresponding `data/raw/` directories before running the experiments.
-
-### Generate Visualizations
-
-```bash
-python -m experiments.plot_results
-```
-
-Results are saved in `experiments/results/`, and visualizations are saved in `experiments/results/plots/`.
-
-## Technologies
-
-- Python
-- PyTorch
-- NumPy
-- pandas
-- scikit-learn
-- Matplotlib
-- Automatic Differentiation
-- Newton Optimization
-- Logistic Regression
-- Algorithmic Fairness
-- Machine Unlearning
-
-## Current Project Status
-
-| Component | Status |
-|---|---|
-| Fairness objective | Completed |
-| Gradient and Hessian computation | Completed |
-| Newton unlearning implementation | Completed |
-| Retraining baseline | Completed |
-| Adult dataset experiments | Completed |
-| COMPAS dataset experiments | Completed |
-| HSLS:09 dataset integration | Completed |
-| Random deletion experiments | Completed |
-| Demographic-targeted deletion experiments | Completed |
-| Cross-dataset evaluation | Completed |
-| Ten experimental visualizations | Completed |
-| Consolidated experimental results | Completed |
-| Repeated-seed statistical evaluation | Future work |
-| Final research report and presentation | In progress |
-
-## Limitations and Future Work
-
-Current limitations:
-
-- The implementation uses a single Newton update, which approximates the retrained optimum.
-- Experiments use specific train/test splits and deletion seeds; results may vary with different random seeds.
-- Runtime measurements depend on hardware, system load, and implementation details.
-- HSLS results are unweighted predictive evaluations rather than survey-weighted population estimates.
-- Dataset preprocessing and experimental protocols may differ from those in the original research paper.
-- Empirical similarity to retraining does not establish formal certified deletion or privacy guarantees.
-
-Potential extensions:
-
-1. Evaluate multiple deletion seeds and report confidence intervals.
-2. Repeat runtime measurements and report robust timing statistics.
-3. Investigate numerical stability and approximation error at larger deletion rates.
-4. Evaluate additional protected attributes and intersectional demographic groups.
-5. Investigate objective perturbation and formal privacy/unlearning guarantees.
-6. Extend the method to nonlinear models and larger datasets.
+Besides the pytest suite (`tests/test_reproduction.py`), `tests/` holds
+standalone checks from the project's first iteration, run with
+`python -m tests.<name>` (for example `python -m tests.test_fair_loss`).
+`test_adult_unlearning` needs the model file written by
+`python -m tests.test_adult_training`. Earlier experiment scripts and their
+results, which used a pre-paper data setup, were replaced by
+`experiments/run_deletion_sweep.py` and remain in the git history.
 
 ## References
 
-Oesterling et al. (2024). *Fair Machine Unlearning: Data Removal while Mitigating Disparities*. Proceedings of AISTATS 2024.
+- A. Oesterling, J. Ma, F. P. Calmon, H. Lakkaraju. *Fair Machine Unlearning:
+  Data Removal while Mitigating Disparities.* AISTATS 2024.
+- C. Guo, T. Goldstein, A. Hannun, L. van der Maaten. *Certified Data Removal
+  from Machine Learning Models.* ICML 2020.
+- Z. Izzo, M. A. Smart, K. Chaudhuri, J. Zou. *Approximate Data Deletion from
+  Machine Learning Models.* AISTATS 2021.
+- L. Bourtoule et al. *Machine Unlearning.* IEEE S&P 2021.
+- R. Berk et al. *A Convex Framework for Fair Regression.* FAT/ML 2017.
+- H. Jeong, H. Wang, F. P. Calmon. *Fairness without Imputation.* AAAI 2022
+  (HSLS preprocessing).
+- National Center for Education Statistics. *High School Longitudinal Study of
+  2009 (HSLS:09).* https://nces.ed.gov/surveys/hsls09/
 
-National Center for Education Statistics (NCES). *High School Longitudinal Study of 2009 (HSLS:09)*. https://nces.ed.gov/surveys/hsls09/
+The HSLS table and the preprocessing logic come from the authors' official
+code, used under the Apache License 2.0.
 
 ---
 
-**Author:** Ahmed Sabzwari, Omar Jamjoum, Aaron Chandler
-
-**Research Focus:** Machine Learning Systems · Algorithmic Fairness · Optimization · Responsible AI
-
-**Disclaimer:** This repository is an independent experimental implementation inspired by the referenced research. Dataset preprocessing and experimental protocols may differ from the original paper. Results should be interpreted as empirical findings rather than proof of certified machine unlearning.
+**Authors:** Ahmed Sabzwari, Omar Jamjoum, Aaron Chandler

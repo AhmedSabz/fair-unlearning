@@ -1,0 +1,11 @@
+# pip alternative to environment.yml:  pip install -r requirements.txt
+# Tested with Python 3.12, torch 2.14, numpy 2.5, pandas 3.1,
+# scikit-learn 1.9, scipy 1.18, matplotlib 3.11, pytest 9.2, aif360 0.6.
+torch>=2.2
+numpy>=1.26
+pandas>=2.1
+scikit-learn>=1.4
+scipy>=1.11
+matplotlib>=3.8
+pytest>=8
+aif360>=0.6   # only needed by validation/compare_official.py

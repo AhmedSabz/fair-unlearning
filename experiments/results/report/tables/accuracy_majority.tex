@@ -1,0 +1,29 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\caption{Test accuracy when unlearning (majority deletion), ours vs. paper Table 6. Mean $\pm$ std over 5 repeats.}
+\label{tab:accuracy_majority}
+\begin{tabular}{lcccccc}
+\hline
+Method & COMPAS 5\% & COMPAS 20\% & Adult 5\% & Adult 20\% & HSLS 5\% & HSLS 20\% \\
+\hline
+Full Training (BCE) (ours) & 0.616 $\pm$ 0.000 & 0.616 $\pm$ 0.000 & 0.820 $\pm$ 0.000 & 0.820 $\pm$ 0.000 & 0.716 $\pm$ 0.000 & 0.716 $\pm$ 0.000 \\
+Full Training (BCE) (paper) & 0.654 $\pm$ 0.000 & 0.654 $\pm$ 0.000 & 0.814 $\pm$ 0.000 & 0.814 $\pm$ 0.000 & 0.738 $\pm$ 0.000 & 0.738 $\pm$ 0.000 \\
+Retraining (BCE) (ours) & 0.619 $\pm$ 0.001 & 0.628 $\pm$ 0.005 & 0.819 $\pm$ 0.000 & 0.819 $\pm$ 0.001 & 0.715 $\pm$ 0.001 & 0.712 $\pm$ 0.001 \\
+Retraining (BCE) (paper) & 0.654 $\pm$ 0.001 & 0.652 $\pm$ 0.002 & 0.814 $\pm$ 0.000 & 0.814 $\pm$ 0.000 & 0.736 $\pm$ 0.000 & 0.736 $\pm$ 0.002 \\
+Newton (Guo et al.) (ours) & 0.619 $\pm$ 0.001 & 0.628 $\pm$ 0.005 & 0.819 $\pm$ 0.000 & 0.819 $\pm$ 0.001 & 0.715 $\pm$ 0.001 & 0.712 $\pm$ 0.001 \\
+Newton (Guo et al.) (paper) & 0.654 $\pm$ 0.001 & 0.652 $\pm$ 0.002 & 0.814 $\pm$ 0.000 & 0.814 $\pm$ 0.001 & 0.736 $\pm$ 0.000 & 0.735 $\pm$ 0.002 \\
+SISA (Bourtoule et al.) (ours) & 0.631 $\pm$ 0.004 & 0.628 $\pm$ 0.007 & 0.818 $\pm$ 0.000 & 0.819 $\pm$ 0.001 & 0.714 $\pm$ 0.001 & 0.711 $\pm$ 0.002 \\
+SISA (Bourtoule et al.) (paper) & 0.654 $\pm$ 0.002 & 0.653 $\pm$ 0.004 & 0.814 $\pm$ 0.000 & 0.815 $\pm$ 0.001 & 0.734 $\pm$ 0.001 & 0.733 $\pm$ 0.002 \\
+PRU (Izzo et al.) (ours) & 0.647 $\pm$ 0.002 & 0.647 $\pm$ 0.002 & 0.834 $\pm$ 0.000 & 0.834 $\pm$ 0.000 & 0.721 $\pm$ 0.001 & 0.720 $\pm$ 0.001 \\
+PRU (Izzo et al.) (paper) & 0.696 $\pm$ 0.006 & 0.688 $\pm$ 0.003 & 0.812 $\pm$ 0.001 & 0.811 $\pm$ 0.002 & 0.723 $\pm$ 0.012 & 0.731 $\pm$ 0.004 \\
+Full Training (Fair) (ours) & 0.631 $\pm$ 0.000 & 0.631 $\pm$ 0.000 & 0.815 $\pm$ 0.000 & 0.815 $\pm$ 0.000 & 0.698 $\pm$ 0.000 & 0.698 $\pm$ 0.000 \\
+Full Training (Fair) (paper) & 0.666 $\pm$ 0.000 & 0.666 $\pm$ 0.000 & 0.815 $\pm$ 0.000 & 0.815 $\pm$ 0.000 & 0.725 $\pm$ 0.000 & 0.725 $\pm$ 0.000 \\
+Retraining (Fair) (ours) & 0.635 $\pm$ 0.003 & 0.602 $\pm$ 0.008 & 0.814 $\pm$ 0.001 & 0.813 $\pm$ 0.001 & 0.700 $\pm$ 0.001 & 0.696 $\pm$ 0.001 \\
+Retraining (Fair) (paper) & 0.663 $\pm$ 0.004 & 0.653 $\pm$ 0.002 & 0.815 $\pm$ 0.000 & 0.813 $\pm$ 0.000 & 0.724 $\pm$ 0.001 & 0.725 $\pm$ 0.002 \\
+Fair Unlearning (paper's method) (ours) & 0.635 $\pm$ 0.003 & 0.602 $\pm$ 0.008 & 0.814 $\pm$ 0.001 & 0.813 $\pm$ 0.001 & 0.700 $\pm$ 0.001 & 0.696 $\pm$ 0.001 \\
+Fair Unlearning (paper's method) (paper) & 0.663 $\pm$ 0.004 & 0.653 $\pm$ 0.003 & 0.815 $\pm$ 0.000 & 0.814 $\pm$ 0.001 & 0.724 $\pm$ 0.001 & 0.725 $\pm$ 0.002 \\
+\hline
+\end{tabular}
+\\[2pt]\parbox{\textwidth}{\footnotesize \% = share of the whole training set deleted. Paper values from Oesterling et al. (2024), Appendix A.8.}
+\end{table*}

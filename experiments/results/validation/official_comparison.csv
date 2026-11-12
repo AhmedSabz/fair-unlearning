@@ -1,0 +1,79 @@
+dataset,check,quantity,value,tolerance,result,note
+compas,objective,vs. official (float32 fairness sum),1.5360020347152317e-07,0.001,PASS,
+compas,objective,vs. official formula in float64,1.4141803767787736e-16,1e-06,PASS,
+compas,training,fair: (our objective - official) / |official|,-2.8189938932752955e-07,1e-09,PASS,<= 0: ours reaches an equal or lower loss
+compas,training,"fair: gradient norm, ours",6.085946741635644e-09,inf,PASS,info: 0 at the exact optimum
+compas,training,"fair: gradient norm, official",9.947705353109337e-06,inf,PASS,info: 0 at the exact optimum
+compas,training,fair: test prediction agreement,0.9990530303030303,inf,PASS,info
+compas,training,bce: (our objective - official) / |official|,-0.00013158573908397936,1e-09,PASS,<= 0: ours reaches an equal or lower loss
+compas,training,"bce: gradient norm, ours",1.2572148121672568e-09,inf,PASS,info: 0 at the exact optimum
+compas,training,"bce: gradient norm, official",0.0012814518368619292,inf,PASS,info: 0 at the exact optimum
+compas,training,bce: test prediction agreement,0.9867424242424242,inf,PASS,info
+compas,fair step,transcription (as released) vs. official fn,0.0006986750785568238,0.001,PASS,official sums in float32
+compas,fair step,transcription ((n-k) lambda) vs. ours,8.771053976217216e-06,0.0001,PASS,
+compas,fair step,"distance to retrained model, ours",0.00781422985395045,inf,PASS,info: lower is better
+compas,fair step,"distance to retrained model, official",0.014258310944051028,inf,PASS,info: lower is better
+compas,newton step,transcription (as released) vs. official fn,0.0,1e-06,PASS,
+compas,newton step,transcription (fixed) vs. ours,8.348641970920858e-07,0.0001,PASS,
+compas,newton step,"distance to retrained model, ours",0.006233799546747654,inf,PASS,info: lower is better
+compas,newton step,"distance to retrained model, official",0.0358323567278041,inf,PASS,info: lower is better
+compas,PRU,relative difference of update (bug fixed),1.090112513147846e-14,1e-06,PASS,
+compas,PRU,official as released vs. fixed,0.2568829384437764,inf,PASS,info: effect of the official row-index bug
+compas,SISA vote,share of differing predictions,0.0,0.0,PASS,
+compas,metrics,accuracy: |ours - aif360|,0.0,1e-12,PASS,
+compas,metrics,aeod: |ours - aif360|,0.0,1e-12,PASS,
+compas,metrics,dp: |ours - aif360|,0.0,1e-12,PASS,
+compas,metrics,eopp: |ours - aif360|,0.0,1e-12,PASS,
+compas,certificate,relative difference of eps' (data),5.40923387969055e-15,1e-06,PASS,
+adult,objective,vs. official (float32 fairness sum),1.6638661847136064e-06,0.001,PASS,
+adult,objective,vs. official formula in float64,0.0,1e-06,PASS,
+adult,training,fair: (our objective - official) / |official|,-0.01367909591818152,1e-09,PASS,<= 0: ours reaches an equal or lower loss
+adult,training,"fair: gradient norm, ours",1.2632573546035598e-08,inf,PASS,info: 0 at the exact optimum
+adult,training,"fair: gradient norm, official",0.005918091709973551,inf,PASS,info: 0 at the exact optimum
+adult,training,fair: test prediction agreement,0.9779332615715823,inf,PASS,info
+adult,training,bce: (our objective - official) / |official|,-0.00033820884673176966,1e-09,PASS,<= 0: ours reaches an equal or lower loss
+adult,training,"bce: gradient norm, ours",4.662939729065351e-09,inf,PASS,info: 0 at the exact optimum
+adult,training,"bce: gradient norm, official",0.0003149848738797147,inf,PASS,info: 0 at the exact optimum
+adult,training,bce: test prediction agreement,0.993756727664155,inf,PASS,info
+adult,fair step,transcription (as released) vs. official fn,0.00014189239808765048,0.001,PASS,official sums in float32
+adult,fair step,transcription ((n-k) lambda) vs. ours,3.153636814194263e-06,0.0001,PASS,
+adult,fair step,"distance to retrained model, ours",0.003048223778217731,inf,PASS,info: lower is better
+adult,fair step,"distance to retrained model, official",0.01691614561799972,inf,PASS,info: lower is better
+adult,newton step,transcription (as released) vs. official fn,0.0,1e-06,PASS,
+adult,newton step,transcription (fixed) vs. ours,1.2339285759202182e-06,0.0001,PASS,
+adult,newton step,"distance to retrained model, ours",0.003802955655153687,inf,PASS,info: lower is better
+adult,newton step,"distance to retrained model, official",0.21424545096378497,inf,PASS,info: lower is better
+adult,PRU,relative difference of update (bug fixed),1.2300682536310572e-12,1e-06,PASS,
+adult,PRU,official as released vs. fixed,1.2276498588177702,inf,PASS,info: effect of the official row-index bug
+adult,SISA vote,share of differing predictions,0.0,0.0,PASS,
+adult,metrics,accuracy: |ours - aif360|,0.0,1e-12,PASS,
+adult,metrics,aeod: |ours - aif360|,0.0,1e-12,PASS,
+adult,metrics,dp: |ours - aif360|,0.0,1e-12,PASS,
+adult,metrics,eopp: |ours - aif360|,0.0,1e-12,PASS,
+adult,certificate,relative difference of eps' (data),0.0,1e-06,PASS,
+hsls,objective,vs. official (float32 fairness sum),0.000621134259203423,0.001,PASS,
+hsls,objective,vs. official formula in float64,2.3816782591020037e-15,1e-06,PASS,
+hsls,training,fair: (our objective - official) / |official|,-4.271426071136676e-09,1e-09,PASS,<= 0: ours reaches an equal or lower loss
+hsls,training,"fair: gradient norm, ours",3.449751155075328e-08,inf,PASS,info: 0 at the exact optimum
+hsls,training,"fair: gradient norm, official",1.243824606155129e-05,inf,PASS,info: 0 at the exact optimum
+hsls,training,fair: test prediction agreement,1.0,inf,PASS,info
+hsls,training,bce: (our objective - official) / |official|,-1.2702887687654762e-11,1e-09,PASS,<= 0: ours reaches an equal or lower loss
+hsls,training,"bce: gradient norm, ours",7.930655292511742e-09,inf,PASS,info: 0 at the exact optimum
+hsls,training,"bce: gradient norm, official",8.373659472005947e-07,inf,PASS,info: 0 at the exact optimum
+hsls,training,bce: test prediction agreement,1.0,inf,PASS,info
+hsls,fair step,transcription (as released) vs. official fn,2.4178142076517094e-05,0.001,PASS,official sums in float32
+hsls,fair step,transcription ((n-k) lambda) vs. ours,1.5758817492317497e-06,0.0001,PASS,
+hsls,fair step,"distance to retrained model, ours",4.12159606019028e-06,inf,PASS,info: lower is better
+hsls,fair step,"distance to retrained model, official",0.003723918739855565,inf,PASS,info: lower is better
+hsls,newton step,transcription (as released) vs. official fn,0.0,1e-06,PASS,
+hsls,newton step,transcription (fixed) vs. ours,3.2652173428093926e-07,0.0001,PASS,
+hsls,newton step,"distance to retrained model, ours",3.78230581659508e-06,inf,PASS,info: lower is better
+hsls,newton step,"distance to retrained model, official",0.0034310080586061305,inf,PASS,info: lower is better
+hsls,PRU,relative difference of update (bug fixed),5.259729939696639e-14,1e-06,PASS,
+hsls,PRU,official as released vs. fixed,0.4359530863721392,inf,PASS,info: effect of the official row-index bug
+hsls,SISA vote,share of differing predictions,0.0,0.0,PASS,
+hsls,metrics,accuracy: |ours - aif360|,0.0,1e-12,PASS,
+hsls,metrics,aeod: |ours - aif360|,0.0,1e-12,PASS,
+hsls,metrics,dp: |ours - aif360|,0.0,1e-12,PASS,
+hsls,metrics,eopp: |ours - aif360|,0.0,1e-12,PASS,
+hsls,certificate,relative difference of eps' (data),2.486956602723509e-15,1e-06,PASS,

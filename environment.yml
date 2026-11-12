@@ -1,0 +1,20 @@
+# Conda environment for the project.
+#   conda env create -f environment.yml
+#   conda activate fair-unlearning
+# conda-forge picks a CUDA build of PyTorch when a GPU driver is present and
+# a CPU build otherwise; the experiments run fine on CPU.
+name: fair-unlearning
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pytorch>=2.2
+  - numpy>=1.26
+  - pandas>=2.1
+  - scikit-learn>=1.4
+  - scipy>=1.11
+  - matplotlib>=3.8
+  - pytest>=8
+  - pip
+  - pip:
+      - aif360>=0.6   # only needed by validation/compare_official.py

@@ -11,7 +11,12 @@ def train_model(
     lambda_reg=1e-4,
     gamma=1.0,
     max_iter=500,
+    noise=None,
 ):
+    """
+    Minimize the fair logistic loss with L-BFGS (strong Wolfe line search).
+    noise: optional perturbation vector b (see fair_logistic_loss).
+    """
     theta = torch.zeros(
         X.shape[1],
         dtype=X.dtype,
@@ -38,6 +43,7 @@ def train_model(
             sensitive,
             lambda_reg=lambda_reg,
             gamma=gamma,
+            noise=noise,
         )
 
         loss.backward()
