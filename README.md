@@ -23,11 +23,13 @@ We reproduce the paper's full experimental setup on all three datasets
 
 - **The paper's main claim reproduces.** Fair Unlearning tracks fair retraining
   within 0.0013 AEOD and 0.0004 accuracy in every dataset and deletion
-  setting, and stays fairer than unlearning methods built for the plain
+  setting (averages over the 5 repeats; single repeats differ by up to
+  0.0065 AEOD and 0.0028 accuracy), and stays fairer than unlearning methods built for the plain
   (BCE) loss: AEOD at 5% random deletion is 0.038 vs. 0.106 (Adult),
   0.038 vs. 0.295 (HSLS) and 0.206 vs. 0.217 (COMPAS, where the gap is
   small on this split).
-- **Speed:** 3–18× faster than retraining (paper: 2–20×).
+- **Speed:** about 2–18× faster than retraining (paper: 2–20×); single
+  timings on CPU, so the exact factors vary between machines.
 - **Accuracy** is within about 1.5 points of the paper on Adult and HSLS;
   COMPAS is about 3 points lower, within the variation we measured across
   train/test splits.
@@ -103,6 +105,20 @@ retraining with ε = √(2 ln(1.5/δ)) · ε′/σ. We compute ε′ with both o
 paper's bounds (Theorem 1 and the data-dependent bound of App. A.2) and report
 the smaller, as the paper does.
 
+In every reported setting the smaller is the data-dependent bound,
+ε′ = ¼ · ‖X′‖₂ · ‖Δθ‖ · ‖X′Δθ‖ (X′ = remaining rows including the
+intercept, Δθ = the unlearning step). It bounds the gradient of the summed
+noisy loss on D′ for any row norms up to about 5, because the constant it
+needs is ½ · max|ℓ‴| · max‖x‖ ≈ 0.07 here (max|ℓ‴| = 1/(6√3) ≈ 0.096,
+max‖x‖ ≤ √2), below the ¼ used. The Theorem 1 bound as implemented assumes
+‖x‖ ≤ 1 (ψ = ¼, g = 1), which our rows do not satisfy, so it is not an
+established bound here and would have to be rescaled before it could be
+reported. Two caveats apply to reading ε as a guarantee: Lemma 2 calibrates
+the noise to a bound ε′ fixed before the noise is drawn, whereas we compute
+ε′ after the update, so each ε is the certificate for a removal budget equal
+to the realized ε′; and the lemma assumes training and retraining return the
+exact optimum, while ours stop at a gradient norm of about 1e-8.
+
 **Metrics.** Absolute Equalized Odds Difference (AEOD, Eq. 1) =
 ½(|TPR_a − TPR_b| + |FPR_a − FPR_b|), plus absolute demographic parity,
 equality of opportunity and subgroup accuracy differences, and test accuracy.
@@ -116,10 +132,14 @@ cleaned tables value for value (see [`data/README.md`](data/README.md)).
 |---|---|---|---|---|---|---|
 | Adult | 46,447 | 21 | White / Black | income > $50K | 1 | 1e-4 |
 | COMPAS | 5,278 | 7 | Caucasian / African-American | is_recid | 10 | 1e-4 |
-| HSLS | 14,509 | 59 | White, Asian / other | 9th-grade math grade (binary) | 10 | 1e-2 |
+| HSLS | 14,509 | 59 | White, Asian / other | 9th-grade math test score above median (`X1TXMTH`) | 10 | 1e-2 |
 
-Random 80/20 train/test split; every row scaled to norm ≤ 1 (Theorem 1's
-assumption); intercept column appended. Deletions are 1, 5, 10, 15, 20% of the
+Random 80/20 train/test split; every row divided by the largest training-row
+norm, so training rows have ‖x‖ ≤ 1 before the intercept column is appended
+(Theorem 1 assumes ‖x‖ ≤ 1; with the intercept ‖x‖ ≤ √2, and test rows can
+exceed 1). All reported certificates come from the data-dependent bound,
+which remains valid at these norms; the Theorem 1 bound does not (see
+"Noise and certificate" above). Deletions are 1, 5, 10, 15, 20% of the
 training set (random or majority group) and 1, 5, 10% (minority group), with
 5 repeats, as in the paper.
 
@@ -141,10 +161,10 @@ All data files are in the repository; nothing needs to be downloaded.
 From the repository root:
 
 ```bash
-python -m pytest                                    # tests, ~5 s
-python -m experiments.run_deletion_sweep            # Figs. 1, 3, 5–7, Tables 2, 4–6 data (~30–60 min)
-python -m experiments.run_deletion_sweep --vary-split   # same, new split per seed
-python -m experiments.run_noise_sweep               # Fig. 2 data (~10–20 min)
+python -m pytest                                    # tests, ~20 s (~2 min with the NCES file)
+python -m experiments.run_deletion_sweep            # Figs. 1, 3, 5–7, Tables 2, 4–6 data (~2 min)
+python -m experiments.run_deletion_sweep --vary-split   # same, new split per seed (~2 min)
+python -m experiments.run_noise_sweep               # Fig. 2 data (~1 min)
 python -m experiments.make_report                   # tables and figures, ~10 s
 python -m validation.compare_official               # check against the official code
 ```
@@ -171,7 +191,8 @@ experiments/results/
 src/
 ├── data/
 │   ├── datasets.py        paper preprocessing for all three datasets
-│   └── adult.py, compas.py, hsls.py   load_adult(), load_compas(), load_hsls()
+│   ├── adult.py, compas.py, hsls.py   load_adult(), load_compas(), load_hsls()
+│   └── hsls_nces.py       HSLS built independently from NCES data (load_hsls_nces)
 ├── objectives/
 │   ├── fair_loss.py       fair objective (+ optional noise term)
 │   ├── train.py           L-BFGS training
@@ -220,6 +241,10 @@ so only the speedups are comparable.
   varies a lot between splits (see `report/figures/split_variation`).
 - Fig. 4 (fairness–accuracy tradeoff over γ) is produced separately (Task 1).
 - HSLS uses the authors' preprocessed, k-NN-imputed table, not survey weights.
+  Our output matches their published cleaned CSV, which validates only the
+  steps after their imputation. `src/data/hsls_nces.py` builds HSLS
+  independently from the NCES public-use file (14,843 students, no
+  train/test leakage); see [`data/README.md`](data/README.md).
 - Large ε values at high deletion rates mean the certificate is weak there;
   the paper's bound scales with the number of deleted rows.
 

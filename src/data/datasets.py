@@ -7,8 +7,14 @@ Reimplements the preprocessing in the authors' official code
     datasets/COMPAS/prepare_compas.py
     datasets/HSLS/prepare_hsls.py
     datasets/Dataloader.py
-The prepare_* functions below reproduce the authors' cleaned tables value for
-value (Adult 46,447 rows, COMPAS 5,278, HSLS 14,509).
+The prepare_* functions below are intended to reproduce the authors' cleaned
+tables (Adult 46,447 rows, COMPAS 5,278, HSLS 14,509). For HSLS this was
+verified value for value against the authors' published hsls_cleaned.csv (see
+data/README.md); because prepare_hsls() starts from the authors'
+already-imputed pickle, that check validates only the steps after imputation.
+Adult and COMPAS matched the authors' cleaned CSVs in a one-off check
+(data/README.md) but are not covered by an automated equality test. src/data/hsls_nces.py builds
+HSLS independently from the NCES public-use file.
 
 Setup, per the paper (Sec. 5.1, App. A.6) and the official code:
     1. Sensitive attribute = race on all three datasets.
@@ -20,13 +26,16 @@ Setup, per the paper (Sec. 5.1, App. A.6) and the official code:
     3. COMPAS: ProPublica filters; features age, charge degree (+1 felony,
                -1 misdemeanor), race, sex, priors_count, length_of_stay;
                target is_recid.
-    4. HSLS  : authors' k-NN-imputed survey table (from Jeong et al., AAAI
-               2022); target gradebin (9th-grade math grade, binarized);
-               MinMax scaled.
+    4. HSLS  : authors' k-NN-imputed survey table (Fair-Projection, Alghamdi
+               et al., NeurIPS 2022); target gradebin = 9th-grade math test
+               score X1TXMTH above its median (an IRT score, not a course
+               grade); MinMax scaled.
     5. The sensitive attribute is also a model input, as in the official code.
     6. Random 80/20 split, then every row divided by the largest training-row
-       norm so ||x|| <= 1 (Theorem 1 assumption). Adult is standardized
-       first. An explicit intercept column of ones is appended last.
+       norm, so training rows have ||x|| <= 1 (Theorem 1 assumption) before
+       the intercept; test rows can exceed 1. Adult is standardized first.
+       An explicit intercept column of ones is appended last, so with it
+       ||x|| <= sqrt(2) on the training rows.
 
 The intercept column cancels inside the fairness penalty (it is the same for
 every row) and is L2-regularized, as in the official code.
@@ -145,7 +154,7 @@ PREPARERS = {"adult": prepare_adult, "compas": prepare_compas, "hsls": prepare_h
 
 
 # ----------------------------------------------------------------------
-# Step 2: split, scale to ||x|| <= 1, add intercept
+# Step 2: split, scale training rows to ||x|| <= 1, add intercept
 # ----------------------------------------------------------------------
 
 def load_dataset(name, test_size=0.2, random_state=0):
@@ -188,9 +197,10 @@ def to_model_inputs(X_train, X_test, y_train, y_test, s_train, s_test,
                     feature_names):
     """
     Final step shared by every loader, applied after the train/test split:
-    divide every row by the largest training-row norm (so ||x|| <= 1 before
-    the intercept, Theorem 1's assumption), append an intercept column of
-    ones, and convert to the tensors the models expect.
+    divide every row by the largest training-row norm (so every training row
+    has ||x|| <= 1 before the intercept, Theorem 1's assumption; test rows
+    can exceed 1), append an intercept column of ones (training norms are
+    then at most sqrt(2)), and convert to the tensors the models expect.
     """
     feature_names = list(feature_names)
     max_norm = np.linalg.norm(X_train, axis=1).max()
