@@ -13,3 +13,6 @@ venv/
 
 # Official code clone used by validation/compare_official.py
 external/
+
+# NCES HSLS:09 public-use files (~800 MB); download from NCES, never commit
+data/raw/hsls/nces_2016_public_use/
