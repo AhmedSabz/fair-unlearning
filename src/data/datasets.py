@@ -180,6 +180,19 @@ def load_dataset(name, test_size=0.2, random_state=0):
         scaler = StandardScaler().fit(X_train)
         X_train, X_test = scaler.transform(X_train), scaler.transform(X_test)
 
+    return to_model_inputs(X_train, X_test, y_train, y_test, s_train, s_test,
+                           feature_names)
+
+
+def to_model_inputs(X_train, X_test, y_train, y_test, s_train, s_test,
+                    feature_names):
+    """
+    Final step shared by every loader, applied after the train/test split:
+    divide every row by the largest training-row norm (so ||x|| <= 1 before
+    the intercept, Theorem 1's assumption), append an intercept column of
+    ones, and convert to the tensors the models expect.
+    """
+    feature_names = list(feature_names)
     max_norm = np.linalg.norm(X_train, axis=1).max()
     X_train, X_test = X_train / max_norm, X_test / max_norm
 
