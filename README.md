@@ -41,8 +41,10 @@ We reproduce the paper's full experimental setup on all three datasets
   train/test split. Re-drawing the split per seed widens COMPAS error bars
   from ±0.010 to ±0.087 AEOD, so split choice matters far more than which
   rows are deleted.
-- **Certificate:** with the paper's noise (σ = 1), ε at δ = 1e-4 ranges from
-  0.4 (HSLS, 1% deleted) to a few hundred (Adult, 20% deleted).
+- **Certificate estimate:** with the paper's noise (σ = 1), the post-hoc ε at
+  δ = 1e-4 ranges from 0.4 (HSLS, 1% deleted) to a few hundred (Adult, 20%
+  deleted); see "Noise and certificate" for why this is not a formal
+  guarantee.
 
 ![AEOD when unlearning at random](experiments/results/report/figures/fig1_aeod_random.png)
 
@@ -101,23 +103,35 @@ paper's Δ (Eq. 7). With γ = 0 this is the Newton method of Guo et al. (2020).
 **Noise and certificate** (Thm. 1, Lemma 2). Training and retraining minimize
 L + bᵀθ with b ~ N(0, σ²I), σ = 1, using the same b. If the unlearned model's
 gradient on D' is at most ε′, unlearning is (ε, δ)-indistinguishable from
-retraining with ε = √(2 ln(1.5/δ)) · ε′/σ. We compute ε′ with both of the
-paper's bounds (Theorem 1 and the data-dependent bound of App. A.2) and report
-the smaller, as the paper does.
+retraining with ε = √(2 ln(1.5/δ)) · ε′/σ. The paper computes ε′ with two
+bounds (Theorem 1 and the data-dependent bound of App. A.2) and reports the
+smaller; we use only the data-dependent bound.
 
-In every reported setting the smaller is the data-dependent bound,
-ε′ = ¼ · ‖X′‖₂ · ‖Δθ‖ · ‖X′Δθ‖ (X′ = remaining rows including the
-intercept, Δθ = the unlearning step). It bounds the gradient of the summed
-noisy loss on D′ for any row norms up to about 5, because the constant it
-needs is ½ · max|ℓ‴| · max‖x‖ ≈ 0.07 here (max|ℓ‴| = 1/(6√3) ≈ 0.096,
-max‖x‖ ≤ √2), below the ¼ used. The Theorem 1 bound as implemented assumes
-‖x‖ ≤ 1 (ψ = ¼, g = 1), which our rows do not satisfy, so it is not an
-established bound here and would have to be rescaled before it could be
-reported. Two caveats apply to reading ε as a guarantee: Lemma 2 calibrates
-the noise to a bound ε′ fixed before the noise is drawn, whereas we compute
-ε′ after the update, so each ε is the certificate for a removal budget equal
-to the realized ε′; and the lemma assumes training and retraining return the
-exact optimum, while ours stop at a gradient norm of about 1e-8.
+The data-dependent bound is ε′ = ¼ · ‖X′‖₂ · ‖Δθ‖ · ‖X′Δθ‖ (X′ = remaining
+rows including the intercept, Δθ = the unlearning step). It assumes Δθ is an
+undamped Newton step on the remaining-data objective (same λ, γ and noise b),
+as in our experiments; it is not valid for arbitrary parameter updates. Under
+that assumption it bounds the gradient of the summed noisy loss on D′,
+because only the logistic term's Hessian depends on θ; the constant it needs
+is at most max|ℓ‴| · max‖x‖ ≈ 0.14 here (max|ℓ‴| = 1/(6√3) ≈ 0.096,
+max‖x‖ ≤ √2), below the ¼ used. The code returns no certificate (ε = ∞) for
+rows longer than about 2.6, where ¼ would no longer cover it. The Theorem 1
+bound (Eq. 13) is still computed for comparison with the paper but never
+used: its derivation assumes ‖x‖ ≤ 1 (our rows reach √2), drops γ from the
+fairness term between Eqs. 28 and 29, and bounds ‖θ*‖ from the noise-free
+stationarity condition. In all 1,316 reported settings the data-dependent
+bound was already the smaller, so dropping Theorem 1 changes no reported
+value.
+
+**Our ε values are post-hoc estimates, not formal guarantees.** They are
+computed from a valid bound on the remaining gradient, but three limitations
+remain: (1) the lemma calibrates the noise to a bound ε′
+fixed before the noise is drawn, whereas we compute ε′ after the
+noise-dependent update, so each ε describes a removal budget equal to the
+realized ε′ rather than a guarantee established in advance; (2) the lemma
+assumes training and retraining return exact optima, while ours stop at a
+gradient norm of about 1e-8; (3) preprocessing fitted before deletion
+(scaling, and for HSLS imputation) is not unlearned.
 
 **Metrics.** Absolute Equalized Odds Difference (AEOD, Eq. 1) =
 ½(|TPR_a − TPR_b| + |FPR_a − FPR_b|), plus absolute demographic parity,
@@ -137,9 +151,9 @@ cleaned tables value for value (see [`data/README.md`](data/README.md)).
 Random 80/20 train/test split; every row divided by the largest training-row
 norm, so training rows have ‖x‖ ≤ 1 before the intercept column is appended
 (Theorem 1 assumes ‖x‖ ≤ 1; with the intercept ‖x‖ ≤ √2, and test rows can
-exceed 1). All reported certificates come from the data-dependent bound,
-which remains valid at these norms; the Theorem 1 bound does not (see
-"Noise and certificate" above). Deletions are 1, 5, 10, 15, 20% of the
+exceed 1). Certificates use only the data-dependent bound, which remains
+valid at these norms; the Theorem 1 bound does not (see "Noise and
+certificate" above). Deletions are 1, 5, 10, 15, 20% of the
 training set (random or majority group) and 1, 5, 10% (minority group), with
 5 repeats, as in the paper.
 
@@ -245,8 +259,9 @@ so only the speedups are comparable.
   steps after their imputation. `src/data/hsls_nces.py` builds HSLS
   independently from the NCES public-use file (14,843 students, no
   train/test leakage); see [`data/README.md`](data/README.md).
-- Large ε values at high deletion rates mean the certificate is weak there;
-  the paper's bound scales with the number of deleted rows.
+- Large ε values at high deletion rates mean the certificate estimate is weak
+  there; the bound scales with the number of deleted rows. All ε values are
+  post-hoc estimates, not formal guarantees (see "Noise and certificate").
 
 ## Other scripts in `tests/`
 

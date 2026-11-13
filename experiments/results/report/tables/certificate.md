@@ -1,4 +1,4 @@
-**Unlearning certificate ε of Fair Unlearning at δ = 1e-4 and σ = 1 (smaller is stronger), smaller of the Theorem 1 and data-dependent bounds.**
+**Post-hoc unlearning estimate ε of Fair Unlearning at δ = 1e-4 and σ = 1 (smaller is stronger), computed from the data-dependent residual-gradient bound only (App. A.2) after the update; an estimate, not a formal guarantee.**
 
 | Deletion | COMPAS 1% | COMPAS 5% | COMPAS 20% | Adult 1% | Adult 5% | Adult 20% | HSLS 1% | HSLS 5% | HSLS 20% |
 |---|---|---|---|---|---|---|---|---|---|

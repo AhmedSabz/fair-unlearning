@@ -307,9 +307,10 @@ def certificate_table(summary):
                 row.append(f"{v[0]:.2e}" if v else "—")
         rows.append(row)
     write_table(
-        "certificate", "Unlearning certificate ε of Fair Unlearning at "
-        "δ = 1e-4 and σ = 1 (smaller is stronger), smaller of the Theorem 1 "
-        "and data-dependent bounds.", header, rows,
+        "certificate", "Post-hoc unlearning estimate ε of Fair Unlearning at "
+        "δ = 1e-4 and σ = 1 (smaller is stronger), computed from the "
+        "data-dependent residual-gradient bound only (App. A.2) after the "
+        "update; an estimate, not a formal guarantee.", header, rows,
         note="— = setting not run (minority deletion stops at 10%).",
     )
 
