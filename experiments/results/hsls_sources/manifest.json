@@ -1,0 +1,80 @@
+{
+  "created_utc": "2026-11-14T00:30:44+00:00",
+  "git_commit": "8218a040bb00075aaa729ee8edb0c761229691a3",
+  "git_worktree_dirty": true,
+  "driver_sha256": "9a20d294306d9d1ba320c434e6ffa8e07fc6ff9284f6dbd51c7cc7d111363600",
+  "data_sha256": {
+    "authors_pickle": "b4de1bd850fdcf616291bde3a947c646d007676ac992fcba86467431b3a7aac9",
+    "nces_student_csv": "023095d8f430952a7704fe45708f0775ff8149b8893db3d868b10ae189de1018"
+  },
+  "config": {
+    "split_seed": 0,
+    "test_size": 0.2,
+    "deletion_rates": [
+      0.05,
+      0.2
+    ],
+    "deletion_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "deletion_key_seed": 31337,
+    "lambda_reg": 0.01,
+    "gamma": 10.0,
+    "sigma": 1.0,
+    "delta": 0.0001,
+    "max_iter": 500,
+    "noise_seed": 10000,
+    "noise_sha256": "e1eaf0a8799ee6a6",
+    "nces_options": {
+      "row_set": "principled",
+      "fit_mode": "train",
+      "n_neighbors": 5
+    }
+  },
+  "cohort": {
+    "A_rows": 14509,
+    "B_rows": 14843,
+    "A_train_test": [
+      11607,
+      2902
+    ],
+    "B_train_test": [
+      11874,
+      2969
+    ],
+    "shared_train": 11607,
+    "shared_test": 2902,
+    "only_in_A": 0,
+    "only_in_B": 334,
+    "only_in_B_missing_S1M8GRADE": 259,
+    "only_in_B_unexplained": 75,
+    "split_conflicts_shared": 0
+  },
+  "labels": {
+    "A_threshold": 0.154,
+    "B_threshold": 0.14205,
+    "shared_label_differences": {
+      "train": 59,
+      "test": 23
+    },
+    "B_threshold_fitted_on": "B training rows"
+  },
+  "id_set_sha256": {
+    "A_train": "f7bbba1a91fe2784",
+    "B_train": "8e5b8634fb345191",
+    "shared_test": "0623234fb88232f2"
+  },
+  "environment": {
+    "python": "3.11.11",
+    "torch": "2.15.0",
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "sklearn": "1.9.1",
+    "torch_threads": 6,
+    "platform": "macOS-27.0.1-arm64-arm-64bit"
+  }
+}
