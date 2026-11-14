@@ -101,14 +101,21 @@ PAPER_ACCURACY = {
     }),
 }
 
-# Paper Table 2 (seconds, mean, std). Cells that are not legible in the
-# published text are None.
+# Paper Appendix A.7, Table 2 (seconds; mean, std), all 12 published cells.
+# The paper labels the first row only "Retraining"; we compare it with
+# Retraining (Fair), the counterpart of Fair Unlearning.
 PAPER_RUNTIME = {
+    ("Retraining (Fair)", "compas", 0.05): (3.500, 0.340),
+    ("Retraining (Fair)", "compas", 0.20): (3.180, 0.142),
     ("Retraining (Fair)", "adult", 0.05): (36.796, 1.090),
-    ("Fair Unlearning", "adult", 0.05): (8.800, 0.511),
+    ("Retraining (Fair)", "adult", 0.20): (31.175, 1.040),
     ("Retraining (Fair)", "hsls", 0.05): (14.963, 0.396),
-    ("Fair Unlearning", "hsls", 0.05): (6.014, 0.249),
     ("Retraining (Fair)", "hsls", 0.20): (12.362, 0.795),
+    ("Fair Unlearning", "compas", 0.05): (0.170, 0.010),
+    ("Fair Unlearning", "compas", 0.20): (0.164, 0.003),
+    ("Fair Unlearning", "adult", 0.05): (8.800, 0.511),
+    ("Fair Unlearning", "adult", 0.20): (8.483, 0.938),
+    ("Fair Unlearning", "hsls", 0.05): (6.014, 0.249),
     ("Fair Unlearning", "hsls", 0.20): (5.704, 0.015),
 }
 
@@ -237,9 +244,10 @@ def runtime_table(summary):
         "(random deletion), ours vs. paper Table 2.", header, rows,
         note="Ours: CPU, float64; the Newton step computes the Hessian on the "
              "remaining data at unlearning time (no precomputation). Paper: "
-             "32GB V100 GPU. Absolute times are not comparable across "
-             "hardware; compare the speedup. — = not reported or not legible "
-             "in the published table.",
+             "32GB V100 GPU (Appendix A.7, Table 2, whose first row is "
+             "labelled only \"Retraining\"). Absolute times are not "
+             "directly comparable across hardware; speedups also depend on "
+             "implementation and Hessian precomputation.",
     )
 
 
@@ -299,9 +307,10 @@ def certificate_table(summary):
                 row.append(f"{v[0]:.2e}" if v else "—")
         rows.append(row)
     write_table(
-        "certificate", "Unlearning certificate ε of Fair Unlearning at "
-        "δ = 1e-4 and σ = 1 (smaller is stronger), smaller of the Theorem 1 "
-        "and data-dependent bounds.", header, rows,
+        "certificate", "Post-hoc unlearning estimate ε of Fair Unlearning at "
+        "δ = 1e-4 and σ = 1 (smaller is stronger), computed from the "
+        "data-dependent residual-gradient bound only (App. A.2) after the "
+        "update; an estimate, not a formal guarantee.", header, rows,
         note="— = setting not run (minority deletion stops at 10%).",
     )
 

@@ -11,8 +11,10 @@ python -m tests.<name>); pytest imports them but finds no tests in them.
 
 import itertools
 import math
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 
@@ -62,6 +64,26 @@ def test_cleaned_tables_match_official_sizes(prepare, rows, columns):
     df = prepare()
     assert df.shape == (rows, columns)
     assert not df.isna().any().any()
+
+
+AUTHORS_HSLS_CSV = Path(
+    "external/fair-unlearning-official/datasets/HSLS/hsls_cleaned.csv")
+
+
+@pytest.mark.skipif(not AUTHORS_HSLS_CSV.exists(),
+                    reason="official repo clone not present (external/)")
+def test_prepare_hsls_matches_authors_cleaned_csv():
+    """
+    prepare_hsls() equals the authors' published hsls_cleaned.csv. This only
+    validates the steps after the authors' imputed pickle (data/README.md).
+    """
+    ours = prepare_hsls()
+    theirs = pd.read_csv(AUTHORS_HSLS_CSV, index_col=0)
+    assert list(ours.columns) == list(theirs.columns)
+    assert (ours.index == theirs.index).all()
+    for col in ("gradebin", "racebin", "sexbin"):
+        assert (ours[col] == theirs[col]).all()
+    assert np.abs(ours.to_numpy() - theirs.to_numpy()).max() < 1e-12
 
 
 @pytest.mark.parametrize("name, features", [
