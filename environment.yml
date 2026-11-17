@@ -1,20 +1,22 @@
 # Conda environment for the project.
 #   conda env create -f environment.yml
 #   conda activate fair-unlearning
-# conda-forge picks a CUDA build of PyTorch when a GPU driver is present and
-# a CPU build otherwise; the experiments run fine on CPU.
+# Versions are pinned to those with which the full sweep was re-run and
+# reproduced the committed results. PyTorch comes from pip (as in the tested
+# environment); add --index-url https://download.pytorch.org/whl/cpu to the
+# pip line in requirements.txt for a CPU-only build. Everything runs on CPU.
 name: fair-unlearning
 channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - pytorch>=2.2
-  - numpy>=1.26
-  - pandas>=2.1
-  - scikit-learn>=1.4
-  - scipy>=1.11
-  - matplotlib>=3.8
-  - pytest>=8
+  - numpy=2.5.4
+  - pandas=3.1.1
+  - scikit-learn=1.9.1
+  - scipy=1.18.1
+  - matplotlib=3.11.2
+  - pytest=9.2.0
   - pip
   - pip:
-      - aif360>=0.6   # only needed by validation/compare_official.py
+      - torch==2.15.0
+      - aif360==0.6.1   # only needed by validation/compare_official.py
