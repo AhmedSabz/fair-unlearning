@@ -294,24 +294,40 @@ def approximation_table(summary):
     )
 
 
+CERTIFICATE_RATES = (0.01, 0.05, 0.10, 0.20)
+
+
 def certificate_table(summary):
     header = ["Deletion"] + [f"{DATASET_NAMES[ds]} {r:.0%}" for ds in DATASETS
-                             for r in (0.01, 0.05, 0.20)]
+                             for r in CERTIFICATE_RATES]
     rows = []
     for deletion_type in ("random", "minority", "majority"):
         row = [deletion_type]
         for ds in DATASETS:
-            for rate in (0.01, 0.05, 0.20):
+            for rate in CERTIFICATE_RATES:
                 v = value(lookup(summary, ds, deletion_type, rate,
                                  "Fair Unlearning"), "epsilon")
                 row.append(f"{v[0]:.2e}" if v else "—")
         rows.append(row)
+    worst = None   # (epsilon, dataset, deletion type, rate) over ALL rates
+    for r in summary:
+        if r["method"] != "Fair Unlearning" or not r.get("epsilon_mean"):
+            continue
+        eps = float(r["epsilon_mean"])
+        if math.isfinite(eps) and (worst is None or eps > worst[0]):
+            worst = (eps, r["dataset"], r["deletion_type"],
+                     float(r["deletion_rate"]))
+    note = "— = setting not run (minority deletion stops at 10%)."
+    if worst:
+        note += (f" Largest ε over all settings (including 15%): "
+                 f"{worst[0]:.2e} ({DATASET_NAMES[worst[1]]}, {worst[2]} "
+                 f"deletion, {worst[3]:.0%}).")
     write_table(
         "certificate", "Post-hoc unlearning estimate ε of Fair Unlearning at "
         "δ = 1e-4 and σ = 1 (smaller is stronger), computed from the "
         "data-dependent residual-gradient bound only (App. A.2) after the "
         "update; an estimate, not a formal guarantee.", header, rows,
-        note="— = setting not run (minority deletion stops at 10%).",
+        note=note,
     )
 
 
@@ -365,7 +381,9 @@ def _panel(ax, summary, dataset, deletion_type, metric):
 def _save(fig, name):
     figures = OUT / "figures"
     figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / f"{name}.pdf", bbox_inches="tight")
+    # No creation date in the PDF, so re-running gives byte-identical files.
+    fig.savefig(figures / f"{name}.pdf", bbox_inches="tight",
+                metadata={"CreationDate": None})
     fig.savefig(figures / f"{name}.png", dpi=200, bbox_inches="tight")
 
 
