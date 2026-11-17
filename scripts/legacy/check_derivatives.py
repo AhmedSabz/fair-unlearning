@@ -1,3 +1,11 @@
+"""
+Gradient and Hessian on a toy problem: shapes, finiteness, symmetry.
+
+Legacy script from the project's first iteration (the pytest suite in
+tests/test_reproduction.py covers the same ground). Run from the repo root:
+    python -m scripts.legacy.check_derivatives
+"""
+
 import torch
 
 from src.objectives.derivatives import (

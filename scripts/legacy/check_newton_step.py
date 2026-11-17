@@ -1,3 +1,10 @@
+"""
+One Newton unlearning step on a toy problem.
+
+Legacy script from the project's first iteration (the pytest suite in
+tests/test_reproduction.py covers the same ground). Run from the repo root:
+    python -m scripts.legacy.check_newton_step
+"""
 
 import torch
 

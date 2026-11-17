@@ -1,3 +1,10 @@
+"""
+Sanity checks on the paper-matched COMPAS loader.
+
+Legacy script from the project's first iteration (the pytest suite in
+tests/test_reproduction.py covers the same ground). Run from the repo root:
+    python -m scripts.legacy.check_compas_data
+"""
 
 from src.data.compas import load_compas
 

@@ -5,8 +5,8 @@ Covers the data setup, the fair objective, the unlearning methods, the
 baselines, the certificate and the metrics. Each test is small and fast; the
 dataset tests load the real files in data/raw/.
 
-The older tests/test_*.py files are scripts with a main() function (run with
-python -m tests.<name>); pytest imports them but finds no tests in them.
+The first iteration's standalone check scripts are in scripts/legacy/ (run
+with python -m scripts.legacy.<name>).
 """
 
 import itertools
