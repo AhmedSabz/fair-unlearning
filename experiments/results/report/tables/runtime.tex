@@ -7,11 +7,11 @@
 \hline
 Method & COMPAS 5\% & COMPAS 20\% & Adult 5\% & Adult 20\% & HSLS 5\% & HSLS 20\% \\
 \hline
-Retraining (Fair) (ours) & 0.0212 $\pm$ 0.0071 & 0.0202 $\pm$ 0.0054 & 0.0850 $\pm$ 0.0043 & 0.0911 $\pm$ 0.0192 & 0.0354 $\pm$ 0.0031 & 0.0305 $\pm$ 0.0076 \\
+Retraining (Fair) (ours) & 0.0264 $\pm$ 0.0086 & 0.0237 $\pm$ 0.0106 & 0.1052 $\pm$ 0.0119 & 0.1048 $\pm$ 0.0156 & 0.0429 $\pm$ 0.0114 & 0.0366 $\pm$ 0.0092 \\
 Retraining (Fair) (paper) & 3.500 $\pm$ 0.340 & 3.180 $\pm$ 0.142 & 36.796 $\pm$ 1.090 & 31.175 $\pm$ 1.040 & 14.963 $\pm$ 0.396 & 12.362 $\pm$ 0.795 \\
-Fair Unlearning (ours) & 0.0012 $\pm$ 0.0000 & 0.0013 $\pm$ 0.0001 & 0.0083 $\pm$ 0.0003 & 0.0075 $\pm$ 0.0006 & 0.0129 $\pm$ 0.0004 & 0.0111 $\pm$ 0.0008 \\
+Fair Unlearning (ours) & 0.0016 $\pm$ 0.0001 & 0.0014 $\pm$ 0.0002 & 0.0091 $\pm$ 0.0012 & 0.0082 $\pm$ 0.0001 & 0.0146 $\pm$ 0.0010 & 0.0124 $\pm$ 0.0021 \\
 Fair Unlearning (paper) & 0.170 $\pm$ 0.010 & 0.164 $\pm$ 0.003 & 8.800 $\pm$ 0.511 & 8.483 $\pm$ 0.938 & 6.014 $\pm$ 0.249 & 5.704 $\pm$ 0.015 \\
-Speedup (ours) & 17.8$\times$ & 16.1$\times$ & 10.3$\times$ & 12.1$\times$ & 2.7$\times$ & 2.7$\times$ \\
+Speedup (ours) & 16.9$\times$ & 16.4$\times$ & 11.6$\times$ & 12.8$\times$ & 2.9$\times$ & 2.9$\times$ \\
 \hline
 \end{tabular}
 \\[2pt]\parbox{\textwidth}{\footnotesize Ours: CPU, float64; the Newton step computes the Hessian on the remaining data at unlearning time (no precomputation). Paper: 32GB V100 GPU (Appendix A.7, Table 2, whose first row is labelled only "Retraining"). Absolute times are not directly comparable across hardware; speedups also depend on implementation and Hessian precomputation.}
