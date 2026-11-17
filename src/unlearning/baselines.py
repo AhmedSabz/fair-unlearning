@@ -16,6 +16,15 @@ to logistic regression through the working response
 One deliberate difference: the official lin_res builds the PRU gradient from
 X[i] (rows 0..k-1 of the training set) instead of X[ind[i]] (the deleted rows).
 Izzo et al.'s Algorithm uses the deleted rows; we follow the algorithm.
+
+Ridge scale (kept as in the paper's code): PRU's hat matrix
+X (X^T W X + r I)^{-1} X^T W uses r = lambda, as the official code does, so
+our PRU numbers are comparable with the paper's. The models minimize the mean
+loss (1/n) sum l + (lambda/2)||theta||^2, whose summed-loss Hessian has
+r = n * lambda, so r = lambda is ~n times weaker than the model's own ridge;
+this is why PRU lands far from the retrained model (README, "Differences from
+the paper and its official code"). pru_precompute(..., model_ridge=True) uses
+r = n * lambda instead; it is not used for any reported result.
 """
 
 import numpy as np
@@ -76,11 +85,16 @@ def _sigmoid(z):
     return 1.0 / (1.0 + np.exp(-z))
 
 
-def pru_precompute(X, y, theta, lambda_reg):
+def pru_precompute(X, y, theta, lambda_reg, model_ridge=False):
     """
     Quantities that depend only on the full training set and theta_original.
     Done once, before any deletion request (the official code does the same).
     X already contains the intercept column.
+
+    lambda_reg is the model's (mean-loss) L2 strength. The ridge in the hat
+    matrix is lambda_reg, as in the paper's official code; model_ridge=True
+    uses n * lambda_reg, the summed-loss Hessian of the model being unlearned
+    (module docstring).
     """
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
@@ -91,10 +105,12 @@ def pru_precompute(X, y, theta, lambda_reg):
     w = p * (1 - p) + 1e-6            # diag of W_full, nonsingular
     Z = logits + (y - p) / w          # working response
 
-    d = X.shape[1]
-    A = np.linalg.inv(X.T @ (w[:, None] * X) + lambda_reg * np.eye(d))
+    n, d = X.shape
+    ridge = n * lambda_reg if model_ridge else lambda_reg
+    A = np.linalg.inv(X.T @ (w[:, None] * X) + ridge * np.eye(d))
     AXtWZ = A @ (X.T @ (w * Z))       # so that (H Z)_i = x_i^T AXtWZ
-    return {"X": X, "Z": Z, "w": w, "A": A, "AXtWZ": AXtWZ, "theta": theta}
+    return {"X": X, "Z": Z, "w": w, "A": A, "AXtWZ": AXtWZ, "theta": theta,
+            "ridge": ridge}
 
 
 def _lko_predictions(pre, ind):

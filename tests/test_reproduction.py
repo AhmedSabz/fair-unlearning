@@ -235,3 +235,36 @@ def test_metrics_on_hand_computed_example():
     assert m["eopp"] == pytest.approx(0.5)
     assert m["dp"] == pytest.approx(abs(1 / 4 - 3 / 4))
     assert m["subgroup_acc"] == pytest.approx(abs(3 / 4 - 3 / 4))
+
+
+# ----------------------------------------------------------------------
+# PRU ridge scale
+# ----------------------------------------------------------------------
+
+def test_pru_ridge_defaults_to_paper_lambda(toy):
+    X, y, s = toy
+    theta = train_model(X, y, s, lambda_reg=1e-2, gamma=0.0)
+    paper = pru_precompute(X.numpy(), y.numpy(), theta.numpy(), 1e-2)
+    model = pru_precompute(X.numpy(), y.numpy(), theta.numpy(), 1e-2,
+                           model_ridge=True)
+    assert paper["ridge"] == pytest.approx(1e-2)
+    assert model["ridge"] == pytest.approx(len(X) * 1e-2)
+
+
+def test_pru_n_lambda_is_closer_to_retraining(toy):
+    """With the model's own ridge, PRU lands nearer the retrained model."""
+    X, y, s = toy
+    lam = 1e-2
+    theta = train_model(X, y, s, lambda_reg=lam, gamma=0.0)
+    deleted = np.array([0, 5, 9])
+    keep = np.ones(len(X), dtype=bool)
+    keep[deleted] = False
+    retrained = train_model(X[keep], y[keep], s[keep], lambda_reg=lam,
+                            gamma=0.0)
+    dist = {}
+    for model_ridge in (False, True):
+        pre = pru_precompute(X.numpy(), y.numpy(), theta.numpy(), lam,
+                             model_ridge=model_ridge)
+        dist[model_ridge] = torch.norm(pru_unlearn(pre, deleted) - retrained)
+    assert dist[True] < dist[False]
+

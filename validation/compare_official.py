@@ -28,7 +28,8 @@ Checks, per dataset:
     equations, float64) reproduces ours. Distances to the retrained model
     are reported for both.
     5  PRU            Izzo et al. update (official code with its row-index bug
-                      fixed; see src/unlearning/baselines.py)
+                      fixed; see src/unlearning/baselines.py), with the
+                      paper's ridge (lambda, used) and with n * lambda
     6  SISA vote      majority-vote predictions from the same shard models
     7  metrics        accuracy and fairness metrics vs. aif360 (as the
                       official code computes them), on the same predictions
@@ -371,6 +372,24 @@ def validate(name, official, official_utils, have_aif360, results):
     record(results, name, "PRU", "official as released vs. fixed",
            rel_diff(their_pru_raw, pru_ref), INFO, True,
            note="info: effect of the official row-index bug")
+    # Ridge scale: ours and the official code use lambda; the summed-loss
+    # Hessian of the model being unlearned has n * lambda (model_ridge=True).
+    hat_n = (X_np @ scipy.linalg.inv(X_np.T @ W @ X_np + np.eye(d) * n * reg)
+             @ X_np.T @ W)
+    pru_ref_n = _official_pru_fixed(official, X_off, Z, theta_bce.numpy(),
+                                    list(deleted), hat_n, n * reg)
+    ours_pru_n = pru_unlearn(pru_precompute(X_np, y_np, theta_bce.numpy(),
+                                            reg, model_ridge=True),
+                             deleted).numpy()
+    diff = rel_diff(pru_ref_n, ours_pru_n)
+    record(results, name, "PRU",
+           "relative difference of update (bug fixed, ridge n*lambda)",
+           diff, TOL_EXACT, diff < TOL_EXACT)
+    for label, theta_u in (("ridge lambda (paper, used)", ours_pru),
+                           ("ridge n*lambda (model_ridge)", ours_pru_n)):
+        record(results, name, "PRU", f"distance to retrained model, {label}",
+               float(np.linalg.norm(theta_u - retrained_bce.numpy())), INFO,
+               True, note="info: lower is better")
 
     # 6. SISA majority vote from the same shard models.
     shard_thetas = [train_model(X[idx], y[idx], s[idx], lambda_reg=reg,
@@ -508,6 +527,11 @@ def write_report(results, commit, have_aif360):
         "gradient norms above).",
         "5. **Certificate.** `eps_delta_experiments.py` divides by sigma^2; "
         "Lemma 2 gives epsilon proportional to 1/sigma (same at sigma = 1).",
+        "6. **PRU ridge.** `lin_res`/`LKO_pred` build the hat matrix with "
+        "`reg * I`, while the model's summed-loss Hessian (and the official "
+        "`fair_unlearning`/`log_newton`) uses `n * reg * I`. We keep `reg` "
+        "so our PRU results are comparable with the paper's; the distance "
+        "rows above show the effect of `n * reg`.",
         "",
         "Our implementation follows the paper's equations; the distance rows "
         "show it lands closer to the retrained model than the official "
