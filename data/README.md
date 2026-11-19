@@ -30,7 +30,30 @@ training rows have norm <= 1 before the intercept; with the intercept the
 norm is at most sqrt(2), and test rows can exceed 1) and an intercept
 column, as in the official code.
 
-### HSLS: equality with the authors' cleaned table (verified)
+### Two data paths: paper-matched and the team's original loaders
+
+| Path | Code | Select with | Used for |
+|---|---|---|---|
+| **Paper** (default) | `src/data/datasets.py` (`load_dataset`; wrappers `src/data/{adult,compas,hsls}.py`) | `--loader paper` (default) | every reported result |
+| **Original** (team's first iteration) | `src/data/original/{adult,compas,hsls}.py` (`load_original`) | `python -m experiments.run_deletion_sweep --loader original` | comparison only; outputs in `experiments/results/original_loaders/` |
+
+The original loaders are the project's first data setup, restored unchanged
+from commit `19089f1^` (each file's docstring lists its differences). In short:
+
+| | Paper loader | Original loader |
+|---|---|---|
+| Adult sensitive attribute | race, White (1) / Black (0); other races dropped | sex, Male (1) / Female (0) |
+| COMPAS target / sensitive | `is_recid` / Caucasian (1) vs African-American (0) | `two_year_recid` / African-American (1) vs Caucasian (0) |
+| HSLS | authors' 56-feature table, 9th-grade math score above median, race | NCES file, GPA + family income, ever attended college, sex |
+| Sensitive attribute as a model input | yes (as in the official code) | no |
+| Split | random 80/20, seed 0 | Adult: UCI train/test files; COMPAS/HSLS: stratified 80/20 (the sweep passes the same split seed as the paper path) |
+| Scaling | Adult standardized; rows divided by the largest training-row norm; intercept column | standardized numeric, one-hot categoricals; no intercept, no row-norm scaling |
+| Certificate | data-dependent bound applies | not available (rows longer than the bound allows, reported as ε = ∞) |
+
+The original HSLS loader needs the NCES student file (below); Adult and
+COMPAS run from the files in git.
+
+## HSLS: equality with the authors' cleaned table (verified)
 
 `prepare_hsls()` was compared with the authors' published
 `datasets/HSLS/hsls_cleaned.csv` (official repository, commit `8d7a019`,

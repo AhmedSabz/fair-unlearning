@@ -5,8 +5,8 @@ Covers the data setup, the fair objective, the unlearning methods, the
 baselines, the certificate and the metrics. Each test is small and fast; the
 dataset tests load the real files in data/raw/.
 
-The older tests/test_*.py files are scripts with a main() function (run with
-python -m tests.<name>); pytest imports them but finds no tests in them.
+The first iteration's standalone check scripts are in scripts/legacy/ (run
+with python -m scripts.legacy.<name>).
 """
 
 import itertools
@@ -235,3 +235,62 @@ def test_metrics_on_hand_computed_example():
     assert m["eopp"] == pytest.approx(0.5)
     assert m["dp"] == pytest.approx(abs(1 / 4 - 3 / 4))
     assert m["subgroup_acc"] == pytest.approx(abs(3 / 4 - 3 / 4))
+
+
+# ----------------------------------------------------------------------
+# PRU ridge scale and the team's original loaders
+# ----------------------------------------------------------------------
+
+def test_pru_ridge_defaults_to_paper_lambda(toy):
+    X, y, s = toy
+    theta = train_model(X, y, s, lambda_reg=1e-2, gamma=0.0)
+    paper = pru_precompute(X.numpy(), y.numpy(), theta.numpy(), 1e-2)
+    model = pru_precompute(X.numpy(), y.numpy(), theta.numpy(), 1e-2,
+                           model_ridge=True)
+    assert paper["ridge"] == pytest.approx(1e-2)
+    assert model["ridge"] == pytest.approx(len(X) * 1e-2)
+
+
+def test_pru_n_lambda_is_closer_to_retraining(toy):
+    """With the model's own ridge, PRU lands nearer the retrained model."""
+    X, y, s = toy
+    lam = 1e-2
+    theta = train_model(X, y, s, lambda_reg=lam, gamma=0.0)
+    deleted = np.array([0, 5, 9])
+    keep = np.ones(len(X), dtype=bool)
+    keep[deleted] = False
+    retrained = train_model(X[keep], y[keep], s[keep], lambda_reg=lam,
+                            gamma=0.0)
+    dist = {}
+    for model_ridge in (False, True):
+        pre = pru_precompute(X.numpy(), y.numpy(), theta.numpy(), lam,
+                             model_ridge=model_ridge)
+        dist[model_ridge] = torch.norm(pru_unlearn(pre, deleted) - retrained)
+    assert dist[True] < dist[False]
+
+
+@pytest.mark.parametrize("name", ["adult", "compas"])
+def test_original_loaders_are_selectable(name):
+    from experiments.run_deletion_sweep import load_split, results_dir
+    data = load_split(name, 0, loader="original")
+    assert data["X_train"].shape[1] == data["X_test"].shape[1]
+    assert data["sensitive_train"].unique().numel() == 2
+    # The paper loader appends an intercept column; the original ones do not.
+    paper = load_split(name, 0, loader="paper")
+    assert torch.all(paper["X_train"][:, -1] == 1)
+    assert not torch.all(data["X_train"][:, -1] == 1)
+    assert results_dir(False, "original").name == "original_loaders"
+    assert results_dir(True, "original").parent.name == "original_loaders"
+    assert results_dir(False, "paper") == Path("experiments/results")
+
+
+NCES_STUDENT_CSV = Path(
+    "data/raw/hsls/nces_2016_public_use/hsls_16_student_v1_0.csv")
+
+
+@pytest.mark.skipif(not NCES_STUDENT_CSV.exists(),
+                    reason="NCES HSLS student file not present (data/README.md)")
+def test_original_hsls_loader():
+    from src.data.original import load_original
+    data = load_original("hsls", random_state=0)
+    assert data["sensitive_train"].unique().numel() == 2

@@ -1,0 +1,24 @@
+Fair Machine Unlearning: a reproduction (SJSU CMPE 257, Fall 2026)
+Copyright 2026 Ahmed Sabzwari, Omar Jamjoum, Aaron Chandler
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project includes material from the official code release of
+
+    A. Oesterling, J. Ma, F. P. Calmon, H. Lakkaraju.
+    Fair Machine Unlearning: Data Removal while Mitigating Disparities.
+    AISTATS 2024. https://github.com/AI4LIFE-GROUP/fair-unlearning
+    Licensed under the Apache License, Version 2.0.
+
+  - data/raw/hsls/hsls_df_knn_impute_past_v2.pkl is copied unmodified from
+    that repository.
+  - src/data/datasets.py reimplements its datasets/*/prepare_*.py and
+    datasets/Dataloader.py.
+  - src/unlearning/baselines.py follows its fair_retraining.py (SISA, PRU),
+    which adapts code by Izzo et al. (2021).
+
+Third-party data, under their own terms:
+  - Adult: UCI Machine Learning Repository (data/raw/adult/).
+  - COMPAS: ProPublica, propublica/compas-analysis (data/raw/compas/).
+  - HSLS:09 codebooks: National Center for Education Statistics
+    (data/raw/hsls/*.txt).

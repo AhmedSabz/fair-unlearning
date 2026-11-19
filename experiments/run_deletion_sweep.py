@@ -30,7 +30,18 @@ Repeats: each seed re-draws the deleted rows on one fixed train/test split
 (paper: 5 repeats, mean +/- std). --vary-split also draws a new split, noise
 vector and original models per seed, to measure split-to-split variation.
 
-Data preprocessing matches the paper's official code (src/data/datasets.py).
+Deletion sets are nested across rates: for a given seed, the rows deleted at
+1% are the first rows of the same random permutation that gives the 5%, 10%,
+... sets (as in the official code's per-seed draw).
+
+Data loaders (--loader):
+    paper     (default) preprocessing of the paper's official code,
+              src/data/datasets.py. All reported results use this.
+    original  the team's first preprocessing, src/data/original/ (different
+              sensitive attributes, features, targets; no intercept or
+              row-norm scaling, so no certificate). For comparison only;
+              outputs go to experiments/results/original_loaders/. HSLS
+              needs the NCES file (data/README.md).
 
 Usage (from the repo root):
     python -m experiments.run_deletion_sweep
@@ -39,8 +50,9 @@ Usage (from the repo root):
     python -m experiments.run_deletion_sweep --plot-only      # redo summary + plots
     python -m experiments.run_deletion_sweep --vary-split     # new split per seed
     python -m experiments.run_deletion_sweep --sigma 0        # no noise
+    python -m experiments.run_deletion_sweep --loader original --datasets adult compas
 
-Outputs (experiments/results/, or experiments/results/vary_split/):
+Outputs (experiments/results/, .../vary_split/, .../original_loaders/[vary_split/]):
     deletion_sweep_raw_<dataset>.csv   every seed, every method
     deletion_sweep_summary.csv         mean +/- std over seeds, all datasets
     plots/deletion_sweep/<dataset>_<deletion>_<metric>.png
@@ -57,6 +69,7 @@ import numpy as np
 import torch
 
 from src.data.datasets import load_dataset
+from src.data.original import load_original
 from src.evaluation.metrics import calculate_metrics, compute_metrics
 from src.objectives.train import train_model
 from src.unlearning.baselines import (
@@ -109,9 +122,27 @@ SUMMARY_NAME = "deletion_sweep_summary.csv"
 PLOT_SUBDIR = Path("plots") / "deletion_sweep"
 
 
-def results_dir(vary_split=False):
-    """Paper protocol -> experiments/results/; --vary-split -> .../vary_split/."""
-    return BASE_RESULTS_DIR / "vary_split" if vary_split else BASE_RESULTS_DIR
+LOADERS = ("paper", "original")
+
+
+def results_dir(vary_split=False, loader="paper"):
+    """
+    Paper protocol -> experiments/results/; --vary-split -> .../vary_split/.
+    --loader original puts either under experiments/results/original_loaders/.
+    """
+    base = BASE_RESULTS_DIR
+    if loader == "original":
+        base = base / "original_loaders"
+    return base / "vary_split" if vary_split else base
+
+
+def load_split(name, split_seed, loader="paper"):
+    """One train/test split from the chosen loader (see module docstring)."""
+    if loader == "paper":
+        return load_dataset(name, random_state=split_seed)
+    if loader == "original":
+        return load_original(name, random_state=split_seed)
+    raise ValueError(f"Unknown loader: {loader}")
 
 
 # ----------------------------------------------------------------------
@@ -153,12 +184,12 @@ def choose_deletions(deletion_type, rate, sensitive_train, roles, seed):
 # One train/test split: data, noise, original models, baseline setup
 # ----------------------------------------------------------------------
 
-def prepare_split(name, hp, split_seed, sigma):
-    data = load_dataset(name, random_state=split_seed)
+def prepare_split(name, hp, split_seed, sigma, loader="paper"):
+    data = load_split(name, split_seed, loader)
     X, y, s = data["X_train"], data["y_train"], data["sensitive_train"]
     roles = group_roles(s)
     print(
-        f"Split {split_seed} | train size {len(s)} | "
+        f"Split {split_seed} ({loader} loader) | train size {len(s)} | "
         f"minority = group {roles['minority']} "
         f"({(s == roles['minority']).sum().item()} rows) | "
         f"gamma = {hp['gamma']}, lambda = {hp['lambda_reg']}, sigma = {sigma}"
@@ -278,8 +309,8 @@ def run_scenario(split, deleted, hp, sigma):
 # ----------------------------------------------------------------------
 
 def sweep(datasets, num_seeds, gamma_override, lambda_override,
-          vary_split=False, sigma=SIGMA):
-    out_dir = results_dir(vary_split)
+          vary_split=False, sigma=SIGMA, loader="paper"):
+    out_dir = results_dir(vary_split, loader)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for name in datasets:
@@ -293,7 +324,7 @@ def sweep(datasets, num_seeds, gamma_override, lambda_override,
             hp["lambda_reg"] = lambda_override
 
         split_seeds = list(range(num_seeds)) if vary_split else [0]
-        splits = {seed: prepare_split(name, hp, seed, sigma)
+        splits = {seed: prepare_split(name, hp, seed, sigma, loader)
                   for seed in split_seeds}
 
         for deletion_type, rates in DELETION_RATES.items():
@@ -322,6 +353,7 @@ def sweep(datasets, num_seeds, gamma_override, lambda_override,
                             "gamma": hp["gamma"],
                             "lambda_reg": hp["lambda_reg"],
                             "sigma": sigma,
+                            "loader": loader,
                         })
                     all_rows.extend(rows)
 
@@ -490,8 +522,13 @@ def main():
                         help="New train/test split (and new noise and "
                              "original models) for every seed. The paper "
                              "keeps one split.")
+    parser.add_argument("--loader", choices=LOADERS, default="paper",
+                        help="paper (default): the paper's preprocessing. "
+                             "original: the team's first loaders in "
+                             "src/data/original/, for comparison; results "
+                             "go to experiments/results/original_loaders/.")
     args = parser.parse_args()
-    out_dir = results_dir(args.vary_split)
+    out_dir = results_dir(args.vary_split, args.loader)
 
     if args.plot_only:
         plot(build_summary(out_dir), out_dir)
@@ -499,7 +536,7 @@ def main():
 
     seeds = 1 if args.quick else args.seeds
     summary = sweep(args.datasets, seeds, args.gamma, args.lambda_reg,
-                    args.vary_split, args.sigma)
+                    args.vary_split, args.sigma, args.loader)
     plot(summary, out_dir)
 
 

@@ -1,7 +1,7 @@
-adult_model_original.pth
 # Model checkpoints
 *.pth
 *.pt
+scripts/legacy/models/
 
 # Python cache
 __pycache__/

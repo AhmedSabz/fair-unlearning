@@ -5,6 +5,7 @@ Reads the sweep outputs (run those first):
     experiments/results/deletion_sweep_summary.csv              (paper protocol)
     experiments/results/vary_split/deletion_sweep_summary.csv   (optional)
     experiments/results/noise_sweep/noise_sweep_summary.csv     (optional)
+    experiments/results/fairness_tradeoff/tradeoff_summary.csv  (optional)
 
 Writes experiments/results/report/:
     tables/
@@ -20,6 +21,7 @@ Writes experiments/results/report/:
         fig1_aeod_random              paper Figure 1
         fig2_noise                    paper Figure 2
         fig3_aeod_subgroups           paper Figure 3
+        fig4_fairness_tradeoff        paper App. A.9: accuracy vs AEOD over gamma
         fig5_random_metrics           paper Figure 5 (DP, EOpp, subgroup acc.)
         fig6_minority_metrics         paper Figure 6
         fig7_majority_metrics         paper Figure 7
@@ -294,24 +296,40 @@ def approximation_table(summary):
     )
 
 
+CERTIFICATE_RATES = (0.01, 0.05, 0.10, 0.20)
+
+
 def certificate_table(summary):
     header = ["Deletion"] + [f"{DATASET_NAMES[ds]} {r:.0%}" for ds in DATASETS
-                             for r in (0.01, 0.05, 0.20)]
+                             for r in CERTIFICATE_RATES]
     rows = []
     for deletion_type in ("random", "minority", "majority"):
         row = [deletion_type]
         for ds in DATASETS:
-            for rate in (0.01, 0.05, 0.20):
+            for rate in CERTIFICATE_RATES:
                 v = value(lookup(summary, ds, deletion_type, rate,
                                  "Fair Unlearning"), "epsilon")
                 row.append(f"{v[0]:.2e}" if v else "—")
         rows.append(row)
+    worst = None   # (epsilon, dataset, deletion type, rate) over ALL rates
+    for r in summary:
+        if r["method"] != "Fair Unlearning" or not r.get("epsilon_mean"):
+            continue
+        eps = float(r["epsilon_mean"])
+        if math.isfinite(eps) and (worst is None or eps > worst[0]):
+            worst = (eps, r["dataset"], r["deletion_type"],
+                     float(r["deletion_rate"]))
+    note = "— = setting not run (minority deletion stops at 10%)."
+    if worst:
+        note += (f" Largest ε over all settings (including 15%): "
+                 f"{worst[0]:.2e} ({DATASET_NAMES[worst[1]]}, {worst[2]} "
+                 f"deletion, {worst[3]:.0%}).")
     write_table(
         "certificate", "Post-hoc unlearning estimate ε of Fair Unlearning at "
         "δ = 1e-4 and σ = 1 (smaller is stronger), computed from the "
         "data-dependent residual-gradient bound only (App. A.2) after the "
         "update; an estimate, not a formal guarantee.", header, rows,
-        note="— = setting not run (minority deletion stops at 10%).",
+        note=note,
     )
 
 
@@ -365,7 +383,9 @@ def _panel(ax, summary, dataset, deletion_type, metric):
 def _save(fig, name):
     figures = OUT / "figures"
     figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / f"{name}.pdf", bbox_inches="tight")
+    # No creation date in the PDF, so re-running gives byte-identical files.
+    fig.savefig(figures / f"{name}.pdf", bbox_inches="tight",
+                metadata={"CreationDate": None})
     fig.savefig(figures / f"{name}.png", dpi=200, bbox_inches="tight")
 
 
@@ -394,8 +414,55 @@ def grid_figure(plt, summary, name, panels, row_labels, title):
     plt.close(fig)
 
 
-def figures(summary, split_summary, noise_summary):
+def tradeoff_figure(plt, tradeoff_summary):
+    """Accuracy vs AEOD, one point per gamma (paper App. A.9)."""
+    fig, axes = plt.subplots(1, 3, figsize=(7.16, 2.5))
+    for ax, ds in zip(axes, DATASETS):
+        for method, rate, style in (
+            ("Full Training (Fair)", 0.0,
+             dict(color="black", marker="o", linestyle="-")),
+            ("Fair Unlearning", 0.05,
+             dict(color="tab:green", marker="x", linestyle="--")),
+        ):
+            pts = sorted(
+                (float(r["gamma"]), float(r["aeod_mean"]),
+                 float(r["accuracy_mean"]), float(r["aeod_std"] or 0),
+                 float(r["accuracy_std"] or 0))
+                for r in tradeoff_summary if r["dataset"] == ds
+                and r["method"] == method
+                and abs(float(r["deletion_rate"]) - rate) < 1e-9)
+            if not pts:
+                continue
+            label = (method if rate == 0
+                     else f"{method} after unlearning {rate:.0%}")
+            ax.errorbar([p[1] for p in pts], [p[2] for p in pts],
+                        xerr=[p[3] for p in pts], yerr=[p[4] for p in pts],
+                        capsize=1.5, markersize=3, linewidth=0.8,
+                        label=label, **style)
+            if rate == 0:
+                for g, x, acc, _, _ in pts:
+                    if g in (0.0, 1e-2, 0.1, 1.0, 10.0, 100.0, 1000.0):
+                        ax.annotate("0" if g == 0 else f"{g:g}", (x, acc),
+                                    fontsize=5, textcoords="offset points",
+                                    xytext=(3, 3))
+        ax.set_title(DATASET_NAMES[ds])
+        ax.set_xlabel("AEOD (lower is fairer)")
+        ax.grid(alpha=0.3)
+    axes[0].set_ylabel("Test accuracy")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=2,
+               bbox_to_anchor=(0.5, -0.08), frameon=False)
+    fig.suptitle("Fairness–accuracy tradeoff over γ (labels: γ; paper "
+                 "App. A.9)", fontsize=9)
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    _save(fig, "fig4_fairness_tradeoff")
+    plt.close(fig)
+
+
+def figures(summary, split_summary, noise_summary, tradeoff_summary=None):
     plt = _plt()
+    if tradeoff_summary:
+        tradeoff_figure(plt, tradeoff_summary)
     grid_figure(plt, summary, "fig1_aeod_random",
                 [[(ds, "random", "aeod") for ds in DATASETS]], ["AEOD"],
                 "AEOD when unlearning at random (paper Figure 1)")
@@ -495,12 +562,14 @@ def main():
         raise SystemExit("Run python -m experiments.run_deletion_sweep first.")
     split_summary = load_summary(RESULTS / "vary_split" / "deletion_sweep_summary.csv")
     noise_summary = load_summary(RESULTS / "noise_sweep" / "noise_sweep_summary.csv")
+    tradeoff_summary = load_summary(
+        RESULTS / "fairness_tradeoff" / "tradeoff_summary.csv")
 
     accuracy_tables(summary)
     runtime_table(summary)
     approximation_table(summary)
     certificate_table(summary)
-    figures(summary, split_summary, noise_summary)
+    figures(summary, split_summary, noise_summary, tradeoff_summary)
     print(f"Tables and figures written to {OUT}")
 
 
