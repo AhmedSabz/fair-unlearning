@@ -1,7 +1,7 @@
 # Efficient and Fair Machine Unlearning: Newton-Based Data Removal, Demographic Fairness, and Multi-Dataset Evaluation
 
-A reproduction of *Fair Machine Unlearning: Data Removal while Mitigating
-Disparities* (Oesterling, Ma, Calmon, Lakkaraju, AISTATS 2024)
+A reproduction of _Fair Machine Unlearning: Data Removal while Mitigating
+Disparities_ (Oesterling, Ma, Calmon, Lakkaraju, AISTATS 2024)
 [[paper](https://proceedings.mlr.press/v238/oesterling24a.html),
 [arXiv](https://arxiv.org/abs/2307.14754),
 [official code](https://github.com/AI4LIFE-GROUP/fair-unlearning)],
@@ -33,7 +33,7 @@ We reproduce the paper's full experimental setup on all three datasets
 - **Accuracy** is below the paper's on COMPAS and HSLS (random deletion,
   Table 4): COMPAS by 1.4–3.9 points (Full Training: BCE 0.616 vs. 0.652,
   Fair 0.631 vs. 0.647), HSLS by 0.8–1.6 points (Full Training (Fair) 0.698 vs. 0.713).
-  Adult is within 0.4 points. On our COMPAS split the fair model is *more*
+  Adult is within 0.4 points. On our COMPAS split the fair model is _more_
   accurate than BCE (the paper has the reverse); across five re-drawn splits
   the order flips (fair ahead on 3 of 5) and COMPAS accuracy ranges from
   0.59 to 0.68, so this is split noise rather than a systematic difference.
@@ -81,31 +81,31 @@ Full tables, with the paper's numbers alongside ours:
 
 ## What is reproduced
 
-| Paper | Ours | Script |
-|---|---|---|
-| Fig. 1, Fig. 3: AEOD for random, minority and majority deletion | `report/figures/fig1_aeod_random`, `fig3_aeod_subgroups` | `run_deletion_sweep.py` → `make_report.py` |
-| Fig. 2: accuracy and ε vs. noise σ | `report/figures/fig2_noise` | `run_noise_sweep.py` → `make_report.py` |
-| Figs. 5–7: demographic parity, equality of opportunity, subgroup accuracy | `report/figures/fig5–7_*` | `run_deletion_sweep.py` → `make_report.py` |
-| Tables 4–6: test accuracy | `report/tables/accuracy_*` | `make_report.py` |
-| Table 2: runtime | `report/tables/runtime` | `make_report.py` |
-| App. A.9: fairness–accuracy tradeoff over γ | `report/figures/fig4_fairness_tradeoff` | `run_fairness_tradeoff.py` → `make_report.py` |
-| Methods: Fair Unlearning, Retraining (Fair/BCE), Newton, SISA, PRU, Full Training (Fair/BCE) | all eight | `src/unlearning/` |
+| Paper                                                                                        | Ours                                                     | Script                                        |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| Fig. 1, Fig. 3: AEOD for random, minority and majority deletion                              | `report/figures/fig1_aeod_random`, `fig3_aeod_subgroups` | `run_deletion_sweep.py` → `make_report.py`    |
+| Fig. 2: accuracy and ε vs. noise σ                                                           | `report/figures/fig2_noise`                              | `run_noise_sweep.py` → `make_report.py`       |
+| Figs. 5–7: demographic parity, equality of opportunity, subgroup accuracy                    | `report/figures/fig5–7_*`                                | `run_deletion_sweep.py` → `make_report.py`    |
+| Tables 4–6: test accuracy                                                                    | `report/tables/accuracy_*`                               | `make_report.py`                              |
+| Table 2: runtime                                                                             | `report/tables/runtime`                                  | `make_report.py`                              |
+| App. A.9: fairness–accuracy tradeoff over γ                                                  | `report/figures/fig4_fairness_tradeoff`                  | `run_fairness_tradeoff.py` → `make_report.py` |
+| Methods: Fair Unlearning, Retraining (Fair/BCE), Newton, SISA, PRU, Full Training (Fair/BCE) | all eight                                                | `src/unlearning/`                             |
 
 All figures and tables are under `experiments/results/report/`.
 
 ## Paper equations → code
 
-| Paper | Code |
-|---|---|
-| Eq. 1, AEOD (and DP, EOpp, subgroup accuracy, App. A.10) | `src/evaluation/metrics.py` (`compute_metrics`) |
-| Eq. 2–4, fair objective; Sec. 4.2 noise term bᵀθ | `src/objectives/fair_loss.py` (`fair_logistic_loss`) |
-| Eq. 7–8, Fair Unlearning step (γ = 0: Guo et al. Newton) | `src/unlearning/newton.py` (`newton_unlearn`) |
-| Lemma 1 / Eq. 13, Theorem 1 bound (reference only) | `src/unlearning/certificate.py` (`theorem_eps_prime`) |
-| App. A.2 / Eq. 35, data-dependent bound | `src/unlearning/certificate.py` (`data_dependent_eps_prime`) |
-| Lemma 2, ε from ε′, σ, δ | `src/unlearning/certificate.py` (`epsilon_from_eps_prime`) |
-| Sec. 5.1 baselines SISA, PRU | `src/unlearning/baselines.py` |
+| Paper                                                       | Code                                                                        |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Eq. 1, AEOD (and DP, EOpp, subgroup accuracy, App. A.10)    | `src/evaluation/metrics.py` (`compute_metrics`)                             |
+| Eq. 2–4, fair objective; Sec. 4.2 noise term bᵀθ            | `src/objectives/fair_loss.py` (`fair_logistic_loss`)                        |
+| Eq. 7–8, Fair Unlearning step (γ = 0: Guo et al. Newton)    | `src/unlearning/newton.py` (`newton_unlearn`)                               |
+| Lemma 1 / Eq. 13, Theorem 1 bound (reference only)          | `src/unlearning/certificate.py` (`theorem_eps_prime`)                       |
+| App. A.2 / Eq. 35, data-dependent bound                     | `src/unlearning/certificate.py` (`data_dependent_eps_prime`)                |
+| Lemma 2, ε from ε′, σ, δ                                    | `src/unlearning/certificate.py` (`epsilon_from_eps_prime`)                  |
+| Sec. 5.1 baselines SISA, PRU                                | `src/unlearning/baselines.py`                                               |
 | Sec. 5.1–5.2 and App. A.6 protocol, Table 1 hyperparameters | `experiments/run_deletion_sweep.py` (`PAPER_HYPERPARAMS`, `DELETION_RATES`) |
-| App. A.9, fairness–accuracy tradeoff over γ | `experiments/run_fairness_tradeoff.py` (`GAMMAS`) |
+| App. A.9, fairness–accuracy tradeoff over γ                 | `experiments/run_fairness_tradeoff.py` (`GAMMAS`)                           |
 
 ## Method
 
@@ -125,7 +125,7 @@ pairs, the loss is not a sum of per-person terms, which is what breaks
 standard Newton unlearning.
 
 **Fair Unlearning** (Eq. 7–8). After deleting rows R, take one Newton step from
-the trained model θ* toward the optimum on the remaining data D' = D \ R:
+the trained model θ\* toward the optimum on the remaining data D' = D \ R:
 
 $$
 \theta^- = \theta^* - H^{-1} \nabla \mathcal{L}(\theta^*, D'), \qquad
@@ -154,7 +154,7 @@ max‖x‖ ≤ √2), below the ¼ used. The code returns no certificate (ε = �
 rows longer than about 2.6, where ¼ would no longer cover it. The Theorem 1
 bound (Eq. 13) is still computed for comparison with the paper but never
 used: its derivation assumes ‖x‖ ≤ 1 (our rows reach √2), drops γ from the
-fairness term between Eqs. 28 and 29, and bounds ‖θ*‖ from the noise-free
+fairness term between Eqs. 28 and 29, and bounds ‖θ\*‖ from the noise-free
 stationarity condition. In all 1,316 reported settings the data-dependent
 bound was already the smaller, so dropping Theorem 1 changes no reported
 value.
@@ -178,11 +178,11 @@ equality of opportunity and subgroup accuracy differences, and test accuracy.
 Preprocessing reimplements the official code and reproduces the authors'
 cleaned tables value for value (see [`data/README.md`](data/README.md)).
 
-| Dataset | Rows | Inputs (incl. intercept) | Sensitive attribute (race) | Target | γ | λ |
-|---|---|---|---|---|---|---|
-| Adult | 46,447 | 21 | White / Black | income > $50K | 1 | 1e-4 |
-| COMPAS | 5,278 | 7 | Caucasian / African-American | is_recid | 10 | 1e-4 |
-| HSLS | 14,509 | 59 | White, Asian / other | 9th-grade math test score above median (`X1TXMTH`) | 10 | 1e-2 |
+| Dataset | Rows   | Inputs (incl. intercept) | Sensitive attribute (race)   | Target                                             | γ   | λ    |
+| ------- | ------ | ------------------------ | ---------------------------- | -------------------------------------------------- | --- | ---- |
+| Adult   | 46,447 | 21                       | White / Black                | income > $50K                                      | 1   | 1e-4 |
+| COMPAS  | 5,278  | 7                        | Caucasian / African-American | is_recid                                           | 10  | 1e-4 |
+| HSLS    | 14,509 | 59                       | White, Asian / other         | 9th-grade math test score above median (`X1TXMTH`) | 10  | 1e-2 |
 
 Random 80/20 train/test split; every row divided by the largest training-row
 norm, so training rows have ‖x‖ ≤ 1 before the intercept column is appended
@@ -268,6 +268,22 @@ experiments/results/
 └── validation/official_comparison.md    validation report
 ```
 
+### Live demo
+
+An interactive one-page demo (standard library server, no new dependencies):
+
+```bash
+python demo/app.py              # or ./run_demo.sh; opens http://localhost:8257
+python demo/app.py --check      # one COMPAS run in the terminal, then exit
+```
+
+It trains the fair (paper γ) and regular (γ = 0) models on COMPAS or Adult, deletes a
+chosen share of training rows (random or from one race group), and compares retraining
+from scratch with one Newton unlearning step: time, test accuracy, AEOD, and the weight
+gap ‖θ_unlearn − θ_retrain‖. It also shows a naive step that ignores the change in the
+pairwise fairness penalty, and the (ε, δ) estimate when the noise σ is above 0. It
+writes nothing to disk. See [demo/README.md](demo/README.md).
+
 ## Repository structure
 
 ```
@@ -295,6 +311,7 @@ experiments/
 validation/compare_official.py   comparison with the authors' code
 tests/                     pytest suite (also run by GitHub Actions)
 scripts/legacy/            first-iteration check scripts (see below)
+demo/                      live interactive demo (app.py server, index.html page)
 data/                      raw data and data/README.md
 LICENSE, NOTICE            Apache-2.0, attribution for the official code and data
 ```
@@ -359,18 +376,18 @@ history; their data loaders are kept in `src/data/original/`.
 
 ## References
 
-- A. Oesterling, J. Ma, F. P. Calmon, H. Lakkaraju. *Fair Machine Unlearning:
-  Data Removal while Mitigating Disparities.* AISTATS 2024.
-- C. Guo, T. Goldstein, A. Hannun, L. van der Maaten. *Certified Data Removal
-  from Machine Learning Models.* ICML 2020.
-- Z. Izzo, M. A. Smart, K. Chaudhuri, J. Zou. *Approximate Data Deletion from
-  Machine Learning Models.* AISTATS 2021.
-- L. Bourtoule et al. *Machine Unlearning.* IEEE S&P 2021.
-- R. Berk et al. *A Convex Framework for Fair Regression.* FAT/ML 2017.
-- H. Jeong, H. Wang, F. P. Calmon. *Fairness without Imputation.* AAAI 2022
+- A. Oesterling, J. Ma, F. P. Calmon, H. Lakkaraju. _Fair Machine Unlearning:
+  Data Removal while Mitigating Disparities._ AISTATS 2024.
+- C. Guo, T. Goldstein, A. Hannun, L. van der Maaten. _Certified Data Removal
+  from Machine Learning Models._ ICML 2020.
+- Z. Izzo, M. A. Smart, K. Chaudhuri, J. Zou. _Approximate Data Deletion from
+  Machine Learning Models._ AISTATS 2021.
+- L. Bourtoule et al. _Machine Unlearning._ IEEE S&P 2021.
+- R. Berk et al. _A Convex Framework for Fair Regression._ FAT/ML 2017.
+- H. Jeong, H. Wang, F. P. Calmon. _Fairness without Imputation._ AAAI 2022
   (HSLS preprocessing).
-- National Center for Education Statistics. *High School Longitudinal Study of
-  2009 (HSLS:09).* https://nces.ed.gov/surveys/hsls09/
+- National Center for Education Statistics. _High School Longitudinal Study of
+  2009 (HSLS:09)._ https://nces.ed.gov/surveys/hsls09/
 
 The HSLS table and the preprocessing logic come from the authors' official
 code, used under the Apache License 2.0.
