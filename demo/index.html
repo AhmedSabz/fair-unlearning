@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fair Unlearning Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#16233F; --bg:#E1E7F1; --card:#FFFFFF; --line:#DADCE0; --muted:#56637E;
+  --blue:#2E6BF2; --blue2:#2653B5; --purple:#7A5AF8; --soft:#E3EBFD; --grey:#B0B4BE;
+  --good:#1F9D6B; --bad:#D9534F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--navy);font-family:Sora,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px}
+.mono{font-family:"DM Mono",ui-monospace,Menlo,monospace}
+header{padding:22px 32px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.pill{display:inline-block;background:var(--blue);color:#fff;border-radius:999px;padding:3px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+h1{margin:8px 0 2px;font-size:28px;font-weight:700}
+.sub{color:var(--muted);font-size:13px}
+main{padding:12px 32px 32px;display:grid;grid-template-columns:300px 1fr;gap:20px}
+@media (max-width:900px){main{grid-template-columns:1fr;padding:12px 16px}header{padding:18px 16px 4px}}
+.card{background:var(--card);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(22,35,63,.06)}
+.card h2{margin:0 0 12px;font-size:16px;font-weight:700}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px;letter-spacing:.02em}
+label .v{float:right;color:var(--blue);font-family:"DM Mono",monospace;text-transform:none}
+select,input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;color:var(--navy);background:#fff}
+input[type=range]{width:100%;accent-color:var(--blue)}
+button{margin-top:18px;width:100%;padding:11px;border:0;border-radius:10px;background:var(--blue);color:#fff;font:600 15px Sora,sans-serif;cursor:pointer}
+button:hover{background:var(--blue2)} button:disabled{background:var(--grey);cursor:wait}
+.hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--card);border-radius:14px;padding:14px 16px;border-top:4px solid var(--blue)}
+.kpi.p{border-top-color:var(--purple)} .kpi.n{border-top-color:var(--navy)} .kpi.g{border-top-color:var(--grey)}
+.kpi .t{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .big{font-size:28px;font-weight:700;margin:4px 0 2px;font-family:"DM Mono",monospace}
+.kpi .s{font-size:12px;color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:1100px){.two{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;font-size:11px;color:var(--muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.03em}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:8px 6px;border-bottom:1px solid #EEF0F4;font-family:"DM Mono",monospace}
+td:first-child{font-family:Sora,sans-serif;font-weight:600}
+tr.hl td{background:var(--soft)}
+tr.bad td:last-child{color:var(--bad)}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--blue2);margin-left:6px}
+.tag.reg{background:#EEF0F4;color:var(--muted)}
+.bars{margin-top:16px}
+.bar{display:grid;grid-template-columns:150px 1fr 64px;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.track{background:#EEF0F4;border-radius:6px;height:16px;overflow:hidden}
+.fill{height:100%;border-radius:6px;transition:width .4s}
+.foot{margin-top:18px;font-size:12px;color:var(--muted);line-height:1.6}
+.err{background:#FDECEC;color:var(--bad);padding:12px;border-radius:10px;margin-bottom:12px;display:none}
+.spin{display:none;font-size:13px;color:var(--blue);margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <span class="pill">Live demo</span>
+    <h1>Fair Machine Unlearning</h1>
+    <div class="sub">Reproduction of Oesterling, Ma, Calmon &amp; Lakkaraju, AISTATS 2024 &middot; CMPE 257</div>
+  </div>
+  <div class="sub mono" id="meta"></div>
+</header>
+<main>
+  <section class="card">
+    <h2>1. Delete some people</h2>
+    <label>Dataset</label>
+    <select id="dataset">
+      <option value="compas">COMPAS (recidivism, race)</option>
+      <option value="adult">Adult (income, race)</option>
+    </select>
+    <label>Rows deleted <span class="v" id="pctv">5%</span></label>
+    <input type="range" id="pct" min="1" max="30" step="1" value="5">
+    <label>Who asks to be forgotten</label>
+    <select id="mode">
+      <option value="random">Random users</option>
+      <option value="group0">Only Black / African-American users</option>
+      <option value="group1">Only White / Caucasian users</option>
+    </select>
+    <label>Noise &sigma; (certificate) <span class="v" id="sigmav">0</span></label>
+    <input type="range" id="sigma" min="0" max="10" step="0.5" value="0">
+    <label>Fairness weight &gamma; <span class="v" id="gammav">paper</span></label>
+    <select id="gamma">
+      <option value="">Paper value (COMPAS 10, Adult 1)</option>
+      <option value="0.5">0.5</option><option value="1">1</option>
+      <option value="5">5</option><option value="10">10</option><option value="50">50</option>
+    </select>
+    <label>Seed</label>
+    <input type="number" id="seed" value="0" min="0" max="999">
+    <button id="run">Run unlearning</button>
+    <div class="spin" id="spin">Training, deleting, retraining&hellip;</div>
+    <div class="hint">Loss = BCE + &lambda;/2&middot;&#8214;&theta;&#8214;&sup2; + &gamma;&middot;(Berk pairwise penalty) + b&#7488;&theta;/n, &nbsp;b ~ N(0, &sigma;&sup2;I).
+      Regular = same model with &gamma; = 0 (Guo et al. 2020).</div>
+  </section>
+
+  <section>
+    <div class="err" id="err"></div>
+    <div class="kpis">
+      <div class="kpi"><div class="t">Speed-up vs retraining</div><div class="big" id="k_speed">&ndash;</div><div class="s" id="k_speed_s"></div></div>
+      <div class="kpi p"><div class="t">&#8214;&theta;<sub>unlearn</sub> &minus; &theta;<sub>retrain</sub>&#8214;</div><div class="big" id="k_gap">&ndash;</div><div class="s" id="k_gap_s"></div></div>
+      <div class="kpi n"><div class="t">AEOD fair vs regular</div><div class="big" id="k_aeod">&ndash;</div><div class="s">after unlearning (lower is fairer)</div></div>
+      <div class="kpi g"><div class="t">(&epsilon;, &delta;) certificate</div><div class="big" id="k_eps">&ndash;</div><div class="s" id="k_eps_s"></div></div>
+    </div>
+    <div class="two">
+      <div class="card"><h2>Fair unlearning <span class="tag" id="gtag">&gamma;</span></h2>
+        <table id="t_fair"></table></div>
+      <div class="card"><h2>Regular unlearning <span class="tag reg">&gamma; = 0</span></h2>
+        <table id="t_reg"></table></div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h2>Fairness after the deletion (test-set AEOD, lower is fairer)</h2>
+      <div class="bars" id="bars"></div>
+      <div class="foot">
+        <b>Retrain</b> = train from scratch on the remaining rows (exact, slow). <b>Newton</b> = one Newton step from the old model on the remaining data, using the full fair objective&rsquo;s gradient and Hessian (the paper&rsquo;s method).
+        <b>Naive</b> = &ldquo;subtract the deleted rows&rsquo; gradient&rdquo; while keeping the fairness penalty as if nothing changed; the pairwise penalty couples every pair across groups, so this misses the target.
+        <b>Gap</b> = distance in weight space to the retrained model; &ldquo;keep old model&rdquo; shows how far the model <i>should</i> move.
+        &epsilon; uses the repo&rsquo;s data-dependent bound at &delta; = 10<sup>&minus;4</sup> and is a post-hoc estimate.
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const f3 = x => (x==null ? "–" : x.toFixed(3));
+const ms = s => s==null ? "–" : (s < 1 ? (s*1000).toFixed(1)+" ms" : s.toFixed(2)+" s");
+const sci = x => x==null ? "–" : (x === 0 ? "0" : (x < 0.01 ? x.toExponential(1) : x.toFixed(3)));
+function sync(){ $("pctv").textContent=$("pct").value+"%"; $("sigmav").textContent=$("sigma").value;
+  $("gammav").textContent=$("gamma").value||"paper"; }
+["pct","sigma","gamma"].forEach(id=>$(id).addEventListener("input",sync));
+
+function table(r, fair){
+  let rows = [["Keep old model", r.original, null, "hl0"],
+              ["Retrain from scratch", r.retrain, r.retrain.time, ""],
+              ["Newton unlearning", r.unlearn, r.unlearn.time, "hl"]];
+  if (fair && r.naive) rows.push(["Naive (ignore pairs)", r.naive, r.naive.time, "bad"]);
+  let h = "<tr><th>Model</th><th>Time</th><th>Accuracy</th><th>AEOD</th><th>Gap</th></tr>";
+  for (const [n,m,t,c] of rows)
+    h += `<tr class="${c}"><td>${n}</td><td>${t==null?"–":ms(t)}</td><td>${f3(m.accuracy)}</td><td>${f3(m.aeod)}</td><td>${sci(m.gap)}</td></tr>`;
+  return h;
+}
+function bars(d){
+  const items = [
+    ["Fair · before", d.fair.original.aeod, "var(--grey)"],
+    ["Fair · Newton", d.fair.unlearn.aeod, "var(--blue)"],
+    ["Regular · before", d.regular.original.aeod, "var(--grey)"],
+    ["Regular · Newton", d.regular.unlearn.aeod, "var(--purple)"]];
+  const mx = Math.max(...items.map(i=>i[1]), 0.01) * 1.15;
+  $("bars").innerHTML = items.map(([n,v,c]) =>
+    `<div class="bar"><div>${n}</div><div class="track"><div class="fill" style="width:${100*v/mx}%;background:${c}"></div></div><div class="mono">${v.toFixed(3)}</div></div>`).join("");
+}
+async function run(){
+  $("run").disabled = true; $("spin").style.display="block"; $("err").style.display="none";
+  const q = new URLSearchParams({dataset:$("dataset").value, pct:$("pct").value, mode:$("mode").value,
+    sigma:$("sigma").value, seed:$("seed").value});
+  if ($("gamma").value) q.set("gamma", $("gamma").value);
+  try{
+    const res = await fetch("/api/run?"+q); const d = await res.json();
+    if (!res.ok || d.error) throw new Error(d.error || res.status);
+    const F = d.fair, R = d.regular;
+    $("meta").innerHTML = `${d.dataset.toUpperCase()} · n=${d.n_train} train / ${d.n_test} test · d=${d.d}<br>deleted ${d.n_deleted} rows (${Object.entries(d.deleted_by_group).map(([k,v])=>k+": "+v).join(", ")})`;
+    $("gtag").textContent = "γ = " + F.gamma;
+    $("t_fair").innerHTML = table(F, true); $("t_reg").innerHTML = table(R, false);
+    $("k_speed").textContent = F.speedup.toFixed(1)+"×";
+    $("k_speed_s").textContent = `retrain ${ms(F.retrain.time)} vs Newton ${ms(F.unlearn.time)}`;
+    $("k_gap").textContent = sci(F.unlearn.gap);
+    $("k_gap_s").textContent = F.naive ? `naive: ${sci(F.naive.gap)} · old model: ${sci(F.original.gap)}` : "";
+    $("k_aeod").textContent = `${F.unlearn.aeod.toFixed(3)} / ${R.unlearn.aeod.toFixed(3)}`;
+    if (F.epsilon==null){ $("k_eps").textContent="∞"; $("k_eps_s").textContent = d.sigma>0 ? "bound not applicable" : "σ = 0: no noise, no certificate"; }
+    else { $("k_eps").textContent = F.epsilon < 100 ? F.epsilon.toFixed(2) : F.epsilon.toExponential(1);
+      $("k_eps_s").textContent = `δ = 1e-4, σ = ${d.sigma} (regular: ${R.epsilon==null?"∞":R.epsilon.toFixed(2)})`; }
+    bars(d);
+  }catch(e){ $("err").textContent = "Error: "+e.message; $("err").style.display="block"; }
+  $("run").disabled = false; $("spin").style.display="none";
+}
+$("run").addEventListener("click", run);
+["dataset","mode","gamma"].forEach(id=>$(id).addEventListener("change", run));
+["pct","sigma"].forEach(id=>$(id).addEventListener("change", run));
+sync(); run();
+</script>
+</body>
+</html>
